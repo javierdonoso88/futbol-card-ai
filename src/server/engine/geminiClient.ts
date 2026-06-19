@@ -124,7 +124,7 @@ interface OAIResponse {
 }
 
 async function callGPT(token: string, body: object): Promise<OAIResponse> {
-  const url = `${AI_API_URL}/v2/inference/deployments/${DEPLOYMENT_ID}/chat/completions`;
+  const url = `${AI_API_URL}/v2/inference/deployments/${DEPLOYMENT_ID}/v1/chat/completions`;
   console.log(`Calling GPT-5.5 at: ${url}`);
 
   const res = await fetch(url, {
@@ -206,8 +206,6 @@ export async function generateCard(req: GenerateRequestBody): Promise<GenerateRe
         ],
       },
     ],
-    modalities: ['text', 'image'],
-    max_tokens: 4096,
   };
 
   const gptRes = await callGPT(token, body);
