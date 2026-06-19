@@ -37,7 +37,7 @@ async function getAccessToken(): Promise<string> {
 function buildEndpointUrl(form: 'A' | 'B'): string {
   const base = `${AI_API_URL}/v2/inference/deployments/${DEPLOYMENT_ID}`;
   return form === 'A'
-    ? `${base}/generateContent`
+    ? `${base}/models/gemini-3.5-flash:generateContent`
     : `${base}/models/gemini-2.0-flash:generateContent`;
 }
 
