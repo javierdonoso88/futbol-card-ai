@@ -5,7 +5,7 @@ const CLIENT_SECRET  = process.env.AICORE_CLIENT_SECRET  ?? '';
 const TOKEN_URL      = process.env.AICORE_TOKEN_URL      ?? '';
 const AI_API_URL     = process.env.AICORE_API_URL        ?? 'https://api.ai.prod.eu-central-1.aws.ml.hana.ondemand.com';
 const RESOURCE_GROUP = process.env.AICORE_RESOURCE_GROUP ?? 'default';
-const DEPLOYMENT_ID  = process.env.AICORE_DEPLOYMENT_ID  ?? 'd30c6e956b9084a8';
+const DEPLOYMENT_ID  = process.env.AICORE_DEPLOYMENT_ID  ?? 'de802b9a73842b77';
 
 interface TokenCache { token: string; expiresAt: number; }
 let tokenCache: TokenCache | null = null;
@@ -63,13 +63,17 @@ function parseStats(text: string, role: Role, labels: string[]): { stats: CardSt
   }
 }
 
-interface OAIResponse {
-  choices?: Array<{ message?: { content?: string } }>;
-  error?: { message: string };
+interface GeminiPart {
+  text?: string;
+  inlineData?: { mimeType: string; data: string };
+}
+interface GeminiResponse {
+  candidates?: Array<{ content?: { parts?: GeminiPart[] } }>;
 }
 
-async function callGPT(token: string, messages: object[]): Promise<string> {
-  const url = `${AI_API_URL}/v2/inference/deployments/${DEPLOYMENT_ID}/v1/chat/completions`;
+async function callGemini(token: string, body: object): Promise<GeminiResponse> {
+  const url = `${AI_API_URL}/v2/inference/deployments/${DEPLOYMENT_ID}/models/gemini-2.5-flash-image:generateContent`;
+  console.log(`Calling gemini-2.5-flash-image: ${url}`);
   const res = await fetch(url, {
     method: 'POST',
     headers: {
@@ -77,75 +81,84 @@ async function callGPT(token: string, messages: object[]): Promise<string> {
       'AI-Resource-Group': RESOURCE_GROUP,
       'Content-Type': 'application/json',
     },
-    body: JSON.stringify({ model: 'gpt-5.5', messages }),
+    body: JSON.stringify(body),
   });
   const text = await res.text();
-  if (!res.ok) throw new Error(`GPT AI Core error ${res.status}: ${text}`);
-  const data = JSON.parse(text) as OAIResponse;
-  return data.choices?.[0]?.message?.content ?? '';
+  if (!res.ok) throw new Error(`Gemini AI Core error ${res.status}: ${text}`);
+  console.log(`Response status: ${res.status}, snippet: ${text.substring(0, 150)}`);
+  return JSON.parse(text) as GeminiResponse;
 }
 
 export async function generateCard(req: GenerateRequestBody): Promise<GenerateResponse> {
   const token = await getAccessToken();
   const labels = STAT_LABELS[req.role];
-  const dataUri = `data:${req.mimeType};base64,${req.imageBase64}`;
 
-  // ── Call 1: generate stats (text/vision) ─────────────────────────────────
-  const statsPrompt = `Analyze this executive's photo and generate their FIFA Ultimate Team card stats.
-Role: ${req.role} | Skill: ${req.skill} | Style: ${req.leadershipStyle}
+  const prompt = `You are a professional digital artist specializing in FIFA Ultimate Team collectible cards.
 
-Return ONLY valid JSON, nothing else:
+Transform the provided photo into a complete FIFA Ultimate Team gold card image.
+
+CRITICAL INSTRUCTIONS:
+1. Remove the person's background completely — keep ONLY the person (head + upper body)
+2. Place the person on a gold metallic card background
+3. The final output must be a complete card image (not just the person)
+
+Card design:
+- Gold metallic gradient background: #5C4409 → #C8960C → #FFD700 → #FFF2AA → #FFD700 → #C8960C → #5C4409
+- Subtle diagonal texture lines on the gold
+- Diagonal shimmer stripe (semi-transparent white)
+- Person centered, upper body, vignette fade at bottom blending into the gold
+- TOP LEFT: large bold rating number, role "${req.role}" below it
+- TOP RIGHT: "★ ★ ★" stars and "AI ELITE" badge
+- BELOW PERSON: dark semi-transparent name banner
+- BOTTOM: 6 stats in 2 columns (3 left, 3 right)
+- FOOTER: small "FÚTBOL CARD AI" text
+
+After the card image, return ONLY this JSON (no markdown):
 {"overall":88,"stat1":85,"label1":"${labels[0]}","stat2":82,"label2":"${labels[1]}","stat3":79,"label3":"${labels[2]}","stat4":91,"label4":"${labels[3]}","stat5":76,"label5":"${labels[4]}","stat6":84,"label6":"${labels[5]}","playerName":"THE VISIONARY"}
 
-Rules: overall 82-95, each stat 72-99, boost stats linked to "${req.skill}" and "${req.leadershipStyle}", playerName uppercase 2-word title matching their look.`;
+Stats rules: overall 82-95, each stat 72-99, boost stats for "${req.skill}" and "${req.leadershipStyle}", playerName uppercase 2-word title.`;
 
-  const statsText = await callGPT(token, [
-    { role: 'user', content: [
-      { type: 'image_url', image_url: { url: dataUri, detail: 'low' } },
-      { type: 'text', text: statsPrompt },
-    ]},
-  ]);
-  console.log('Stats response:', statsText.substring(0, 200));
-  const { stats, playerName } = parseStats(statsText, req.role, labels);
+  const body = {
+    contents: [{
+      role: 'user',
+      parts: [
+        { inlineData: { mimeType: req.mimeType, data: req.imageBase64 } },
+        { text: prompt },
+      ],
+    }],
+    generationConfig: {
+      responseModalities: ['IMAGE', 'TEXT'],
+    },
+  };
 
-  // ── Call 2: generate the card image ──────────────────────────────────────
-  const imagePrompt = `You are a digital artist. Transform this photo into a FIFA Ultimate Team gold collectible card image.
+  const geminiRes = await callGemini(token, body);
+  const parts = geminiRes.candidates?.[0]?.content?.parts ?? [];
 
-Requirements:
-- Remove the original background completely, keep only the person
-- Gold metallic card background: gradient from #8B6914 → #FFD700 → #FFF2AA → #FFD700 → #8B6914
-- Subtle diagonal texture lines on the gold background
-- Diagonal shimmer highlight (white semi-transparent stripe)
-- Person centered on card with vignette fade at bottom, blending into the gold
-- Top-left: large bold number "${stats.overall}" and text "${req.role}" below it
-- Top-right: "★ ★ ★" and small badge "AI ELITE"
-- Dark semi-transparent name banner below person: "${playerName}"
-- Bottom 6 stats in 2 columns: ${labels.map((l, i) => `${[stats.stat1,stats.stat2,stats.stat3,stats.stat4,stats.stat5,stats.stat6][i]} ${l}`).join(', ')}
-- Bottom footer: "FÚTBOL CARD AI"
+  const imagePart = parts.find(p => p.inlineData?.mimeType?.startsWith('image/'));
+  const textContent = parts.filter(p => p.text).map(p => p.text!).join('\n');
 
-Return ONLY the card image as a base64-encoded PNG data URI in this exact format:
-data:image/png;base64,<base64data>
+  console.log('Text snippet:', textContent.substring(0, 200));
+  console.log('Image found:', !!imagePart, imagePart?.inlineData?.mimeType);
 
-Do not include any text, explanation or JSON. Only the data URI.`;
+  const { stats, playerName } = parseStats(textContent, req.role, labels);
 
-  const imageText = await callGPT(token, [
-    { role: 'user', content: [
-      { type: 'image_url', image_url: { url: dataUri, detail: 'high' } },
-      { type: 'text', text: imagePrompt },
-    ]},
-  ]);
-  console.log('Image response snippet:', imageText.substring(0, 100));
-
-  // Extract data URI from response
-  const dataUriMatch = imageText.match(/data:(image\/[a-z+]+);base64,([A-Za-z0-9+/=\s]+)/);
-  if (dataUriMatch) {
-    const mimeType = dataUriMatch[1];
-    const imageBase64 = dataUriMatch[2].replace(/\s/g, '');
-    console.log('Extracted image, mimeType:', mimeType, 'length:', imageBase64.length);
-    return { imageBase64, mimeType, stats, playerName, fallback: false };
+  if (imagePart?.inlineData) {
+    return {
+      imageBase64: imagePart.inlineData.data,
+      mimeType: imagePart.inlineData.mimeType,
+      stats,
+      playerName,
+      fallback: false,
+    };
   }
 
-  // Model returned text instead of image — use original photo
-  console.warn('GPT did not return an image data URI, using original photo');
-  return { imageBase64: req.imageBase64, mimeType: req.mimeType, stats, playerName, fallback: false };
+  // Fallback: image not returned, use original photo with AI stats
+  console.warn('No image in response, using original photo');
+  return {
+    imageBase64: req.imageBase64,
+    mimeType: req.mimeType,
+    stats,
+    playerName,
+    fallback: false,
+  };
 }
