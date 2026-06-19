@@ -53,20 +53,26 @@ function buildPrompt(role: Role, skill: string, leadershipStyle: string, labels:
 
 Your task: Transform the provided photo of a business executive into a FIFA Ultimate Team gold card image.
 
+CRITICAL — Background removal:
+- Remove the original photo background completely
+- Keep ONLY the person (head, shoulders, upper body)
+- Replace the background with the card's gold gradient so the person appears naturally integrated into the card
+
 Card visual requirements:
 - Style: FIFA Ultimate Team gold card (premium gold metallic card)
 - Gold gradient background: from dark gold (#8B6914) through bright gold (#FFD700) with a light center highlight (#FFF2AA)
 - Subtle diagonal texture pattern overlay on the card background
 - A light shimmer effect (diagonal white highlight stripe)
 - 2px golden border around the card
-- The person's photo placed in the center, stylized with a subtle vignette fade at the bottom
+- The person centered on the card with NO original background — only the gold card background behind them
+- Subtle vignette fade at the bottom of the person
 - Large overall rating number in top-left corner (font: bold condensed, dark color)
 - Role abbreviation "${role}" below the rating number
 - Player name banner below the photo area
 - 6 stat values at the bottom in 2 columns of 3: ${labels.join(', ')}
 - "FUTBOL CARD AI" small text at the very bottom footer
 
-Generate the complete FIFA UT card image with the person's face clearly visible.
+Generate the complete FIFA UT card image with the person's face clearly visible and background removed.
 
 After the image, output ONLY this JSON (no markdown, no explanation, nothing else):
 {"overall":88,"stat1":85,"label1":"${labels[0]}","stat2":82,"label2":"${labels[1]}","stat3":79,"label3":"${labels[2]}","stat4":91,"label4":"${labels[3]}","stat5":76,"label5":"${labels[4]}","stat6":84,"label6":"${labels[5]}","playerName":"THE EXECUTIVE"}
