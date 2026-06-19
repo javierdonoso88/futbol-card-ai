@@ -33,54 +33,54 @@ const ROLE_COLORS: Record<Role, { bg: string; accent: string; text: string }> = 
 };
 
 function buildPrompt(req: GenerateRequestBody): string {
-  return `Create a Panini FIFA World Cup 2026 official collectible sticker card. Follow these specifications EXACTLY.
+  return `Generate a collectible sticker card image. The output image canvas MUST be 600 pixels wide and 840 pixels tall (600×840px). Portrait orientation. Taller than wide. Do not generate a landscape or square image.
 
-CANVAS: Vertical portrait, 3:4 ratio (e.g. 600×800px). Rounded corners (~14px). No border.
+Think of it as a smartphone screen held vertically, or a playing card standing upright (63mm wide × 88mm tall ratio).
 
---- BACKGROUND LAYER (bottom, full card) ---
-Solid teal/mint color: #29B8B0 with very subtle paper grain texture.
+Paint the following design on this 600×840 canvas, working from top (y=0) to bottom (y=840):
 
---- DECORATIVE NUMBERS LAYER (behind person) ---
-Large "2" on the LEFT side: bold, solid RED (#CC0000), very large (~70% of card height), positioned left-center, slightly cropped at left edge. Behind the person.
-Large "6" on the RIGHT side: bold, solid YELLOW/GOLD (#F5C200), very large (~65% of card height), positioned right-center, slightly cropped at right edge. Behind the person.
-Behind the person and between the numbers: a rectangular Spain flag overlay — left half RED (#CC0000) rectangle, right half YELLOW (#F5C200) rectangle, occupying the middle band of the card (~40% width, ~50% height), semi-transparent, blending with the teal background.
+=== BACKGROUND (full 600×840 canvas) ===
+Fill entire canvas with solid teal color #29B8B0. Add subtle paper grain texture overlay.
+Rounded corners 16px.
 
---- TOP-RIGHT CORNER ---
-White FIFA World Cup 2026 trophy silhouette icon (~55×65px). Below the trophy icon: "FIFA" text in white, bold, small (~11px). This sits in the top-right area, above the "6".
+=== DECORATIVE NUMBERS (y=0 to y=560, behind everything) ===
+- Digit "2": font-size ~520px, bold, color #CC0000 (red), positioned at x=-20 y=-40, text anchor left. Behind the person.
+- Digit "6": font-size ~520px, bold, color #F5C200 (yellow), positioned at x=260 y=-20, text anchor left. Behind the person.
+- Spain flag rectangle: x=160 y=120, width=280 height=320. Left half red #CC0000, right half yellow #F5C200. Semi-transparent (opacity 0.7). Behind person.
 
---- PERSON LAYER (foreground, in front of everything) ---
-Take the person from the provided photo. Remove their background completely using precise cutout. Place them centered horizontally, vertically filling from top (~10% from top) to about 72% of card height. Face must be large, clear and prominent. Upper body visible. The person appears IN FRONT of the numbers and flag shapes.
+=== TOP-RIGHT CORNER (x=460 to x=580, y=20 to y=100) ===
+White FIFA World Cup trophy icon silhouette, ~50×60px, at x=490 y=25.
+Text "FIFA" in white, bold 14px, centered below trophy at y=92.
 
---- RIGHT SIDE ELEMENTS ---
-Circular badge (~55px diameter), positioned at ~55% card height on the right edge (partially overlapping the card edge): Spain flag inside (horizontal red-yellow-red stripes).
-"ESP" text vertically along the right edge below the badge: bold, dark teal (#1A7A75), rotated 90° clockwise, large letters (~28px each), stacked vertically E-S-P.
+=== PERSON (y=30 to y=560, centered horizontally) ===
+Take the person from the provided photo. Remove their background with a precise cutout.
+Place them centered at x=300, spanning from y=30 to y=560.
+Face fills roughly y=30 to y=280. Upper body visible down to y=560.
+Person appears IN FRONT of the "26" numbers and flag rectangle.
 
---- BOTTOM INFO SECTION (lower ~28% of card) ---
-Dark teal rounded pill/capsule (full width minus 12px margin, ~52px tall, rounded ~26px):
-  - Player name: "${req.playerName.toUpperCase()}" — white, bold, ~20px, centered.
-Below the name pill, a second smaller dark teal pill (~40px tall):
-  - "${req.role}  |  ${req.skill}" — white, semibold, ~13px, centered.
-Below that, a third smaller pill:
-  - "Estilo: ${req.leadershipStyle}" — white, regular, ~12px, centered.
+=== RIGHT SIDE ELEMENTS (x=540 to x=590) ===
+Circular Spain flag badge, diameter 60px, center at x=545 y=460.
+Text "E", "S", "P" stacked vertically at x=570, y=500/535/570, bold 28px, color #1A7A75.
 
---- FOOTER BAR (very bottom, ~12% of card height) ---
-White/off-white background bar, full width, ~10% card height.
-Left-center: "SAP" in SAP blue (#008FD3), bold ~16px.
-Center divider: thin vertical line, gray.
-Right-center: "BBVA" in BBVA dark blue (#004481), bold ~16px.
-Both logos centered vertically in the footer bar.
+=== BOTTOM INFO SECTION (y=570 to y=730) ===
+Dark teal pill (#1A6B65), x=20 y=575, width=560 height=52, rounded 26px:
+  Text "${req.playerName.toUpperCase()}" white bold 22px centered at y=608.
 
---- FINAL CHECKLIST ---
-✓ Portrait vertical orientation (taller than wide)
-✓ Teal background
-✓ Big red "2" left, big yellow "6" right, both behind person
-✓ Spain flag colors rectangle in background center
-✓ FIFA trophy top-right in white
-✓ Person cutout centered and prominent, in foreground
-✓ Circular Spain flag badge mid-right
-✓ ESP vertical text right edge
-✓ Name + role pills at bottom in dark teal
-✓ SAP | BBVA footer white bar`;
+Dark teal pill (#1A6B65), x=20 y=635, width=560 height=40, rounded 20px:
+  Text "${req.role}  |  ${req.skill}" white semibold 14px centered at y=660.
+
+Dark teal pill (#1A6B65), x=20 y=683, width=560 height=36, rounded 18px:
+  Text "Estilo: ${req.leadershipStyle}" white regular 13px centered at y=706.
+
+=== FOOTER BAR (y=740 to y=840) ===
+White rectangle x=0 y=740 width=600 height=100.
+Text "SAP" in #008FD3 bold 20px at x=220 y=798.
+Vertical line x=300 y=760 to y=820, color #CCCCCC, width 1px.
+Text "BBVA" in #004481 bold 20px at x=370 y=798.
+
+=== FINAL OUTPUT ===
+Render all layers in order (background → numbers → person → details → pills → footer).
+Output: single PNG image, exactly 600 wide × 840 tall pixels. PORTRAIT. NOT landscape. NOT square.`;
 }
 
 function buildDefaultStats(role: Role): { stats: CardStats; playerName: string } {
