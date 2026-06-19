@@ -7,42 +7,18 @@ interface Props {
   result: GenerateResponse;
   role: Role;
   uploadPreview: string;
+  skill: string;
 }
 
-interface StatItemProps {
-  value: number;
-  label: string;
-}
+// Color palette per role — teal/green background like Panini World Cup
+const ROLE_COLORS: Record<Role, { bg: string; accent1: string; accent2: string; accent3: string }> = {
+  CEO: { bg: '#1a7a6e', accent1: '#e63946', accent2: '#f4a261', accent3: '#2ec4b6' },
+  CFO: { bg: '#1a5fa8', accent1: '#e63946', accent2: '#ffd166', accent3: '#06d6a0' },
+  CTO: { bg: '#2d6a4f', accent1: '#f77f00', accent2: '#fcbf49', accent3: '#4cc9f0' },
+  COO: { bg: '#6a0572', accent1: '#f72585', accent2: '#ffd166', accent3: '#4cc9f0' },
+};
 
-function StatItem({ value, label }: StatItemProps) {
-  return (
-    <div className="flex items-baseline gap-1.5">
-      <span
-        className="font-oswald font-bold leading-none"
-        style={{
-          fontSize: '1.05rem',
-          color: '#1a0900',
-          textShadow: '0 1px 0 rgba(255,255,255,0.35)',
-        }}
-      >
-        {value}
-      </span>
-      <span
-        style={{
-          fontSize: '0.5rem',
-          fontWeight: 700,
-          color: '#2a1200',
-          letterSpacing: '0.05em',
-          lineHeight: 1,
-        }}
-      >
-        {label}
-      </span>
-    </div>
-  );
-}
-
-export default function PlayerCard({ result, role, uploadPreview }: Props) {
+export default function PlayerCard({ result, role, uploadPreview, skill }: Props) {
   const { stats, playerName, imageBase64, mimeType, fallback } = result;
   const photoSrc = imageBase64
     ? `data:${mimeType};base64,${imageBase64}`
@@ -50,6 +26,7 @@ export default function PlayerCard({ result, role, uploadPreview }: Props) {
 
   const cardRef = useRef<HTMLDivElement>(null);
   const [downloading, setDownloading] = useState(false);
+  const colors = ROLE_COLORS[role];
 
   const handleDownload = async () => {
     if (!cardRef.current) return;
@@ -76,128 +53,226 @@ export default function PlayerCard({ result, role, uploadPreview }: Props) {
   return (
     <div className="flex flex-col items-center gap-6">
       <motion.div
-        initial={{ rotateY: 90, scale: 0.8, opacity: 0 }}
-        animate={{ rotateY: 0, scale: 1, opacity: 1 }}
-        transition={{ type: 'spring', stiffness: 180, damping: 20, duration: 0.7 }}
-        style={{ perspective: 1000 }}
+        initial={{ scale: 0.7, opacity: 0, y: 30 }}
+        animate={{ scale: 1, opacity: 1, y: 0 }}
+        transition={{ type: 'spring', stiffness: 200, damping: 22 }}
       >
-        {/* Card container — fixed FIFA UT proportions */}
+        {/* ── PANINI CARD ── 240×340px, same ~1:1.42 ratio as real stickers */}
         <div
           ref={cardRef}
-          className="relative rounded-xl overflow-hidden shadow-2xl"
           style={{
-            width: 300,
-            height: 420,
-            boxShadow: '0 0 0 2px #B8860B, 0 0 0 4px #FFD70033, 0 20px 60px rgba(0,0,0,0.7), 0 0 80px rgba(255,215,0,0.2)',
+            width: 240,
+            height: 340,
+            borderRadius: 12,
+            overflow: 'hidden',
+            position: 'relative',
+            background: colors.bg,
+            boxShadow: '0 8px 32px rgba(0,0,0,0.5), 0 0 0 1.5px rgba(255,255,255,0.15)',
+            fontFamily: "'Inter', sans-serif",
           }}
         >
-          {/* Layer 1: Gold gradient background */}
-          <div className="absolute inset-0 card-bg" />
+          {/* ── Background: large decorative number "25" like Panini ── */}
+          <div style={{
+            position: 'absolute',
+            bottom: -10,
+            right: -8,
+            fontFamily: "'Oswald', sans-serif",
+            fontWeight: 700,
+            fontSize: 180,
+            lineHeight: 1,
+            color: 'rgba(255,255,255,0.07)',
+            userSelect: 'none',
+            pointerEvents: 'none',
+          }}>
+            AI
+          </div>
 
-          {/* Layer 2: Diagonal texture */}
-          <div className="absolute inset-0 card-texture" />
+          {/* ── Colorful blobs top-left (Panini style) ── */}
+          <div style={{ position: 'absolute', top: 0, left: 0, width: 70, height: 70, pointerEvents: 'none' }}>
+            <div style={{ position: 'absolute', top: -18, left: -18, width: 80, height: 80, borderRadius: '50%', background: colors.accent1, opacity: 0.9 }} />
+            <div style={{ position: 'absolute', top: 10, left: -10, width: 55, height: 55, borderRadius: '50%', background: colors.accent2, opacity: 0.85 }} />
+            <div style={{ position: 'absolute', top: -5, left: 20, width: 45, height: 45, borderRadius: '50%', background: colors.accent3, opacity: 0.8 }} />
+          </div>
 
-          {/* Layer 3: Shimmer overlay */}
-          <div className="absolute inset-0 card-shimmer" />
+          {/* ── Colorful blobs bottom-right ── */}
+          <div style={{ position: 'absolute', bottom: 44, right: 0, width: 60, height: 60, pointerEvents: 'none' }}>
+            <div style={{ position: 'absolute', bottom: -20, right: -20, width: 80, height: 80, borderRadius: '50%', background: colors.accent2, opacity: 0.7 }} />
+            <div style={{ position: 'absolute', bottom: 0, right: 5, width: 45, height: 45, borderRadius: '50%', background: colors.accent1, opacity: 0.65 }} />
+          </div>
 
-          {/* Layer 4: Content */}
-          <div className="absolute inset-0 flex flex-col">
+          {/* ── Top bar: FIFA-style icon + number ── */}
+          <div style={{
+            position: 'absolute',
+            top: 0, left: 0, right: 0,
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'space-between',
+            padding: '7px 10px 0',
+            zIndex: 10,
+          }}>
+            {/* Left: silhouette icon placeholder */}
+            <div style={{
+              width: 28, height: 28,
+              borderRadius: 6,
+              background: 'rgba(255,255,255,0.18)',
+              display: 'flex', alignItems: 'center', justifyContent: 'center',
+            }}>
+              <svg width="16" height="16" viewBox="0 0 24 24" fill="white" opacity={0.9}>
+                <circle cx="12" cy="7" r="4"/><path d="M5.5 20a7 7 0 0 1 13 0"/>
+              </svg>
+            </div>
 
-            {/* Top bar: Rating + Role + Nation area */}
-            <div className="flex items-start justify-between px-4 pt-3 pb-0">
-              <div className="flex flex-col items-center leading-none">
-                <span
-                  className="font-oswald font-bold text-shadow-gold"
-                  style={{ fontSize: '3.5rem', color: '#1a0900', lineHeight: 1 }}
-                >
-                  {stats.overall}
-                </span>
-                <span
-                  className="font-oswald font-bold"
-                  style={{ fontSize: '0.85rem', color: '#2a1200', letterSpacing: '0.08em', lineHeight: 1.2 }}
-                >
-                  {role}
-                </span>
+            {/* Right: "PANINI"-style badge + year number */}
+            <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-end', gap: 1 }}>
+              <div style={{
+                background: 'rgba(255,255,255,0.92)',
+                borderRadius: 4,
+                padding: '1px 5px',
+                fontSize: 7,
+                fontWeight: 800,
+                letterSpacing: '0.1em',
+                color: colors.bg,
+              }}>
+                AI CARD
               </div>
+              <span style={{ fontSize: 7, color: 'rgba(255,255,255,0.6)', fontWeight: 600 }}>2025</span>
+            </div>
+          </div>
 
-              {/* Right side: decorative stars / club badge area */}
-              <div className="flex flex-col items-center gap-1 mt-1">
-                <div
-                  className="text-xs font-bold opacity-60"
-                  style={{ color: '#1a0900', fontSize: '0.6rem', letterSpacing: '0.1em' }}
-                >
-                  ★ ★ ★
-                </div>
-                <div
-                  className="rounded border border-[#1a090066] px-1.5 py-0.5"
-                  style={{ background: 'rgba(0,0,0,0.12)' }}
-                >
-                  <span style={{ fontSize: '0.45rem', fontWeight: 700, color: '#1a0900', letterSpacing: '0.08em' }}>
-                    AI ELITE
+          {/* ── Photo — fills most of the card ── */}
+          <div style={{
+            position: 'absolute',
+            top: 0, left: 0, right: 0,
+            bottom: 88,
+            overflow: 'hidden',
+          }}>
+            <img
+              src={photoSrc}
+              alt={playerName}
+              style={{
+                width: '100%',
+                height: '100%',
+                objectFit: 'cover',
+                objectPosition: 'top center',
+              }}
+            />
+            {/* bottom fade into info area */}
+            <div style={{
+              position: 'absolute',
+              bottom: 0, left: 0, right: 0,
+              height: 60,
+              background: `linear-gradient(to bottom, transparent, ${colors.bg})`,
+            }} />
+          </div>
+
+          {/* ── Bottom info area ── */}
+          <div style={{
+            position: 'absolute',
+            bottom: 0, left: 0, right: 0,
+            height: 96,
+            background: colors.bg,
+            display: 'flex',
+            flexDirection: 'column',
+            padding: '4px 8px 6px',
+            zIndex: 5,
+          }}>
+            {/* Name + role row */}
+            <div style={{ marginBottom: 3 }}>
+              <div style={{
+                fontFamily: "'Oswald', sans-serif",
+                fontWeight: 700,
+                fontSize: 13,
+                color: '#ffffff',
+                letterSpacing: '0.06em',
+                textTransform: 'uppercase',
+                lineHeight: 1.1,
+                whiteSpace: 'nowrap',
+                overflow: 'hidden',
+                textOverflow: 'ellipsis',
+              }}>
+                {playerName}
+              </div>
+              <div style={{
+                fontSize: 7.5,
+                color: 'rgba(255,255,255,0.65)',
+                fontWeight: 600,
+                letterSpacing: '0.08em',
+                marginTop: 1,
+              }}>
+                {skill.toUpperCase()}
+              </div>
+            </div>
+
+            {/* Separator */}
+            <div style={{ height: 1, background: 'rgba(255,255,255,0.2)', marginBottom: 4 }} />
+
+            {/* Stats: 3 columns × 2 rows */}
+            <div style={{
+              display: 'grid',
+              gridTemplateColumns: 'repeat(3, 1fr)',
+              gap: '3px 4px',
+            }}>
+              {[
+                { v: stats.stat1, l: stats.label1 },
+                { v: stats.stat2, l: stats.label2 },
+                { v: stats.stat3, l: stats.label3 },
+                { v: stats.stat4, l: stats.label4 },
+                { v: stats.stat5, l: stats.label5 },
+                { v: stats.stat6, l: stats.label6 },
+              ].map(({ v, l }) => (
+                <div key={l} style={{ display: 'flex', alignItems: 'baseline', gap: 2 }}>
+                  <span style={{
+                    fontFamily: "'Oswald', sans-serif",
+                    fontWeight: 700,
+                    fontSize: 11,
+                    color: '#ffffff',
+                    lineHeight: 1,
+                  }}>
+                    {v}
+                  </span>
+                  <span style={{
+                    fontSize: 6,
+                    fontWeight: 700,
+                    color: 'rgba(255,255,255,0.6)',
+                    letterSpacing: '0.04em',
+                    lineHeight: 1,
+                  }}>
+                    {l}
                   </span>
                 </div>
+              ))}
+            </div>
+
+            {/* Role badge + overall */}
+            <div style={{
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'space-between',
+              marginTop: 4,
+            }}>
+              <div style={{
+                background: colors.accent1,
+                borderRadius: 3,
+                padding: '1px 5px',
+                fontSize: 7,
+                fontWeight: 800,
+                color: '#fff',
+                letterSpacing: '0.1em',
+              }}>
+                {role}
               </div>
-            </div>
-
-            {/* Photo area */}
-            <div className="flex-1 relative mx-3 mt-1 mb-0 overflow-hidden rounded-t-lg">
-              <img
-                src={photoSrc}
-                alt={playerName}
-                className="w-full h-full object-cover object-top"
-                style={{
-                  maskImage: 'linear-gradient(to bottom, black 60%, transparent 100%)',
-                  WebkitMaskImage: 'linear-gradient(to bottom, black 60%, transparent 100%)',
-                }}
-              />
-            </div>
-
-            {/* Player name banner */}
-            <div
-              className="mx-0 py-1.5 text-center"
-              style={{ background: 'rgba(0,0,0,0.25)', borderTop: '1px solid rgba(255,215,0,0.3)' }}
-            >
-              <span
-                className="font-oswald font-bold uppercase tracking-widest"
-                style={{ fontSize: '0.85rem', color: '#1a0900', letterSpacing: '0.15em' }}
-              >
-                {playerName}
-              </span>
-            </div>
-
-            {/* Stats grid: 2 columns × 3 rows */}
-            <div
-              className="grid grid-cols-2 px-4 py-2"
-              style={{
-                gap: '4px 16px',
-                borderTop: '1px solid rgba(255,215,0,0.25)',
-                background: 'rgba(0,0,0,0.08)',
-              }}
-            >
-              <StatItem value={stats.stat1} label={stats.label1} />
-              <StatItem value={stats.stat4} label={stats.label4} />
-              <StatItem value={stats.stat2} label={stats.label2} />
-              <StatItem value={stats.stat5} label={stats.label5} />
-              <StatItem value={stats.stat3} label={stats.label3} />
-              <StatItem value={stats.stat6} label={stats.label6} />
-            </div>
-
-            {/* Footer */}
-            <div
-              className="text-center py-1"
-              style={{ borderTop: '1px solid rgba(255,215,0,0.2)' }}
-            >
-              <span
-                style={{
-                  fontSize: '0.4rem',
+              <div style={{ display: 'flex', alignItems: 'baseline', gap: 2 }}>
+                <span style={{
+                  fontFamily: "'Oswald', sans-serif",
                   fontWeight: 700,
-                  color: '#2a1200',
-                  letterSpacing: '0.15em',
-                  opacity: 0.6,
-                }}
-              >
-                FÚTBOL CARD AI
-              </span>
+                  fontSize: 14,
+                  color: '#fff',
+                  lineHeight: 1,
+                }}>
+                  {stats.overall}
+                </span>
+                <span style={{ fontSize: 6, color: 'rgba(255,255,255,0.5)', fontWeight: 600 }}>OVR</span>
+              </div>
             </div>
           </div>
         </div>

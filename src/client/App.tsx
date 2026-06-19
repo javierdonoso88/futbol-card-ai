@@ -209,6 +209,7 @@ export default function App() {
               <PlayerCard
                 result={result}
                 role={role}
+                skill={skill}
                 uploadPreview={upload?.preview ?? ''}
               />
 
