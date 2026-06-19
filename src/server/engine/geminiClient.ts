@@ -33,34 +33,35 @@ const ROLE_COLORS: Record<Role, { bg: string; accent: string; text: string }> = 
 };
 
 function buildPrompt(req: GenerateRequestBody): string {
-  const colors = ROLE_COLORS[req.role];
+  return `You are a professional graphic designer creating a Panini FIFA World Cup 2026 collectible sticker.
 
-  return `You are a professional graphic designer. Create a Panini FIFA World Cup 2026 collectible sticker card in VERTICAL portrait format (portrait orientation, roughly 3:4 ratio) based on the provided photo.
+OUTPUT FORMAT: The image MUST be VERTICAL PORTRAIT orientation. Width:Height ratio = 3:4 (for example 600 wide × 800 tall pixels). This is a tall sticker, NOT square, NOT horizontal. Like a playing card standing upright.
 
-EXACT STYLE — copy this precisely:
-- Overall card background: teal/mint green (#2EC4B6) with slight paper texture
-- Rounded corners (about 12px radius)
-- TOP SECTION (photo area, ~65% of card height):
-  * Large decorative "26" number in the background (bold, slightly transparent, split: "2" on left in dark green, "6" on right in terracotta/orange-red), overlapping behind the person
-  * Top-right corner: FIFA World Cup 2026 trophy logo (white silhouette) with "FIFA" text below it
-  * The person from the photo centered, background removed, placed naturally over the "26" background
-  * Country flag badge (circular, bottom-right of photo area) — use Spain flag (red/yellow/red stripes) since this is for BBVA Spain
-  * Country code "ESP" text vertically on the right edge, bold white letters rotated 90°
-- BOTTOM SECTION (~35% of card height):
-  * Orange-red rounded pill/banner: player name "${req.playerName.toUpperCase()}" in large bold white text
-  * Below that, 3 smaller orange-red rounded pills stacked:
-    - Pill 1: "${req.role} — ${req.skill}"
-    - Pill 2: "Estilo: ${req.leadershipStyle}"
-    - Pill 3: "SAP AI Core · Executive Card"
-  * Bottom footer bar (white/light): "SAP | BBVA" logo lockup centered — show "SAP" in SAP blue and "BBVA" in BBVA dark blue, separated by a vertical line
+EXACT DESIGN — replicate this structure from top to bottom:
 
-IMPORTANT:
-- This is a VERTICAL sticker/card, not horizontal
-- The person's face must be clearly visible and prominent
-- Remove the person's background completely — they appear directly over the card design
-- Do NOT add FIFA or Panini logos (trademark issues) — replace with "AI CARD" and the SAP|BBVA lockup
-- Make it look like a real collectible sticker card, high quality, print-ready
-- Output the complete card as a single image`;
+TOP AREA (upper 60% of the sticker height):
+- Background: solid teal/mint (#2EC4B6) with subtle paper grain texture
+- Large "2" on the left side, dark forest green (#1B5E20), very bold, decorative, semi-transparent, takes up ~40% of width and ~50% of height — positioned behind the person
+- Large "6" on the right side, terracotta/brick red (#BF360C), same style as the "2", partially behind the person
+- Top-right corner: white FIFA World Cup trophy silhouette icon (~40×50px) with "AI CARD" text below it in white, small font
+- THE PERSON: remove background completely, place them centered, face prominent, upper body visible, overlapping the "26" decorative numbers — the person appears IN FRONT of the numbers
+- Bottom-right of photo area: circular badge with Spain flag (horizontal red-yellow-red stripes, ~50px diameter)
+- Right edge: "ESP" text in white, bold, rotated 90° counterclockwise, running vertically along the right side
+
+BOTTOM AREA (lower 40% of the sticker height):
+- Rounded pill/capsule shape, orange-red (#D84315), full width minus small margins: player name "${req.playerName.toUpperCase()}" in large bold white text, centered
+- Below it, 3 smaller orange-red rounded pills stacked with small gaps:
+  * "${req.role} — ${req.skill}"
+  * "Estilo: ${req.leadershipStyle}"
+  * "SAP AI Core · Executive Card"
+- White/cream footer bar at the very bottom: "SAP" in blue (#008FD3) | vertical divider | "BBVA" in dark blue (#004481), centered, bold
+
+CARD FRAME:
+- Rounded corners (~16px)
+- Teal background (#2EC4B6) throughout
+- NO border/stroke around the card edge
+
+CRITICAL: Output MUST be portrait (tall), roughly 600×800px or similar portrait ratio. NOT landscape. NOT square.`;
 }
 
 function buildDefaultStats(role: Role): { stats: CardStats; playerName: string } {
@@ -121,6 +122,9 @@ export async function generateCard(req: GenerateRequestBody): Promise<GenerateRe
     }],
     generationConfig: {
       responseModalities: ['IMAGE', 'TEXT'],
+      imageGenerationConfig: {
+        aspectRatio: '3:4',
+      },
     },
   };
 
