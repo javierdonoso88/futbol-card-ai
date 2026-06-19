@@ -204,17 +204,7 @@ export default function PlayerCard({ result, role, uploadPreview }: Props) {
         </div>
       </motion.div>
 
-      {/* Fallback notice */}
-      {fallback && (
-        <motion.div
-          initial={{ opacity: 0, y: 10 }}
-          animate={{ opacity: 1, y: 0 }}
-          className="flex items-center gap-2 bg-yellow-900/30 border border-yellow-600/40 rounded-lg px-4 py-2 text-yellow-400 text-sm"
-        >
-          <span>⚠</span>
-          <span>Preview — imagen IA no disponible. Usando foto original.</span>
-        </motion.div>
-      )}
+      {/* Fallback notice — hidden, kept for reference */}
 
       {/* Download button */}
       <motion.button
