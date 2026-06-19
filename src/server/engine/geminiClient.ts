@@ -33,35 +33,54 @@ const ROLE_COLORS: Record<Role, { bg: string; accent: string; text: string }> = 
 };
 
 function buildPrompt(req: GenerateRequestBody): string {
-  return `You are a professional graphic designer creating a Panini FIFA World Cup 2026 collectible sticker.
+  return `Create a Panini FIFA World Cup 2026 official collectible sticker card. Follow these specifications EXACTLY.
 
-OUTPUT FORMAT: The image MUST be VERTICAL PORTRAIT orientation. Width:Height ratio = 3:4 (for example 600 wide × 800 tall pixels). This is a tall sticker, NOT square, NOT horizontal. Like a playing card standing upright.
+CANVAS: Vertical portrait, 3:4 ratio (e.g. 600×800px). Rounded corners (~14px). No border.
 
-EXACT DESIGN — replicate this structure from top to bottom:
+--- BACKGROUND LAYER (bottom, full card) ---
+Solid teal/mint color: #29B8B0 with very subtle paper grain texture.
 
-TOP AREA (upper 60% of the sticker height):
-- Background: solid teal/mint (#2EC4B6) with subtle paper grain texture
-- Large "2" on the left side, dark forest green (#1B5E20), very bold, decorative, semi-transparent, takes up ~40% of width and ~50% of height — positioned behind the person
-- Large "6" on the right side, terracotta/brick red (#BF360C), same style as the "2", partially behind the person
-- Top-right corner: white FIFA World Cup trophy silhouette icon (~40×50px) with "AI CARD" text below it in white, small font
-- THE PERSON: remove background completely, place them centered, face prominent, upper body visible, overlapping the "26" decorative numbers — the person appears IN FRONT of the numbers
-- Bottom-right of photo area: circular badge with Spain flag (horizontal red-yellow-red stripes, ~50px diameter)
-- Right edge: "ESP" text in white, bold, rotated 90° counterclockwise, running vertically along the right side
+--- DECORATIVE NUMBERS LAYER (behind person) ---
+Large "2" on the LEFT side: bold, solid RED (#CC0000), very large (~70% of card height), positioned left-center, slightly cropped at left edge. Behind the person.
+Large "6" on the RIGHT side: bold, solid YELLOW/GOLD (#F5C200), very large (~65% of card height), positioned right-center, slightly cropped at right edge. Behind the person.
+Behind the person and between the numbers: a rectangular Spain flag overlay — left half RED (#CC0000) rectangle, right half YELLOW (#F5C200) rectangle, occupying the middle band of the card (~40% width, ~50% height), semi-transparent, blending with the teal background.
 
-BOTTOM AREA (lower 40% of the sticker height):
-- Rounded pill/capsule shape, orange-red (#D84315), full width minus small margins: player name "${req.playerName.toUpperCase()}" in large bold white text, centered
-- Below it, 3 smaller orange-red rounded pills stacked with small gaps:
-  * "${req.role} — ${req.skill}"
-  * "Estilo: ${req.leadershipStyle}"
-  * "SAP AI Core · Executive Card"
-- White/cream footer bar at the very bottom: "SAP" in blue (#008FD3) | vertical divider | "BBVA" in dark blue (#004481), centered, bold
+--- TOP-RIGHT CORNER ---
+White FIFA World Cup 2026 trophy silhouette icon (~55×65px). Below the trophy icon: "FIFA" text in white, bold, small (~11px). This sits in the top-right area, above the "6".
 
-CARD FRAME:
-- Rounded corners (~16px)
-- Teal background (#2EC4B6) throughout
-- NO border/stroke around the card edge
+--- PERSON LAYER (foreground, in front of everything) ---
+Take the person from the provided photo. Remove their background completely using precise cutout. Place them centered horizontally, vertically filling from top (~10% from top) to about 72% of card height. Face must be large, clear and prominent. Upper body visible. The person appears IN FRONT of the numbers and flag shapes.
 
-CRITICAL: Output MUST be portrait (tall), roughly 600×800px or similar portrait ratio. NOT landscape. NOT square.`;
+--- RIGHT SIDE ELEMENTS ---
+Circular badge (~55px diameter), positioned at ~55% card height on the right edge (partially overlapping the card edge): Spain flag inside (horizontal red-yellow-red stripes).
+"ESP" text vertically along the right edge below the badge: bold, dark teal (#1A7A75), rotated 90° clockwise, large letters (~28px each), stacked vertically E-S-P.
+
+--- BOTTOM INFO SECTION (lower ~28% of card) ---
+Dark teal rounded pill/capsule (full width minus 12px margin, ~52px tall, rounded ~26px):
+  - Player name: "${req.playerName.toUpperCase()}" — white, bold, ~20px, centered.
+Below the name pill, a second smaller dark teal pill (~40px tall):
+  - "${req.role}  |  ${req.skill}" — white, semibold, ~13px, centered.
+Below that, a third smaller pill:
+  - "Estilo: ${req.leadershipStyle}" — white, regular, ~12px, centered.
+
+--- FOOTER BAR (very bottom, ~12% of card height) ---
+White/off-white background bar, full width, ~10% card height.
+Left-center: "SAP" in SAP blue (#008FD3), bold ~16px.
+Center divider: thin vertical line, gray.
+Right-center: "BBVA" in BBVA dark blue (#004481), bold ~16px.
+Both logos centered vertically in the footer bar.
+
+--- FINAL CHECKLIST ---
+✓ Portrait vertical orientation (taller than wide)
+✓ Teal background
+✓ Big red "2" left, big yellow "6" right, both behind person
+✓ Spain flag colors rectangle in background center
+✓ FIFA trophy top-right in white
+✓ Person cutout centered and prominent, in foreground
+✓ Circular Spain flag badge mid-right
+✓ ESP vertical text right edge
+✓ Name + role pills at bottom in dark teal
+✓ SAP | BBVA footer white bar`;
 }
 
 function buildDefaultStats(role: Role): { stats: CardStats; playerName: string } {
