@@ -34,54 +34,36 @@ const ROLE_COLORS: Record<Role, { bg: string; accent: string; text: string }> = 
 };
 
 function buildPrompt(req: GenerateRequestBody): string {
-  return `Generate a collectible sticker card image. The output image canvas MUST be 600 pixels wide and 840 pixels tall (600×840px). Portrait orientation. Taller than wide. Do not generate a landscape or square image.
+  const msg1 = `${req.role} — ${req.skill}`;
+  const msg2 = `Estilo de liderazgo: ${req.leadershipStyle}`;
+  const msg3 = `SAP AI Core · Executive Card`;
 
-Think of it as a smartphone screen held vertically, or a playing card standing upright (63mm wide × 88mm tall ratio).
+  return `Crear un cromo digital vertical en relación de aspecto 3:4, inspirado en cromos futbolísticos retro pero con acabado digital limpio y moderno. Usar la foto proporcionada como referencia principal para el retrato, manteniendo la identidad, rostro, barba, peinado, color de ojos y expresión natural de la persona. Recortar limpiamente a la persona del fondo original e integrarla en el centro del cromo, de pecho hacia arriba, con una camiseta de fútbol inspirada en España: roja, con detalles amarillos/dorados y azul marino, estilo selección española moderna, sin copiar exactamente una equipación oficial.
 
-Paint the following design on this 600×840 canvas, working from top (y=0) to bottom (y=840):
+El fondo debe ser turquesa/aqua, con grandes formas gráficas abstractas o numerales en rojo y amarillo detrás del retrato. Mantener una composición limpia, deportiva y coleccionable. En la esquina superior derecha debe aparecer exactamente el mismo emblema blanco fijo usado en el cromo base, con el texto "FIFA" debajo y un pequeño "TM". No cambiar este logo por ningún otro icono.
 
-=== BACKGROUND (full 600×840 canvas) ===
-Fill entire canvas with solid teal color #29B8B0. Add subtle paper grain texture overlay.
-Rounded corners 16px.
+En el lateral derecho, añadir una insignia con la bandera de España y el texto vertical "ESP" en letras grandes blancas o con contorno blanco. En la zona inferior, colocar una barra naranja redondeada con el nombre "${req.playerName.toUpperCase()}" en blanco, grande, centrado y en mayúsculas. Debajo, colocar tres barras naranjas redondeadas con estos tres mensajes exactos:
+- Barra 1: "${msg1}"
+- Barra 2: "${msg2}"
+- Barra 3: "${msg3}"
+Usar texto blanco centrado y perfectamente legible en cada barra.
 
-=== DECORATIVE NUMBERS (y=0 to y=560, behind everything) ===
-- Digit "2": font-size ~520px, bold, color #CC0000 (red), positioned at x=-20 y=-40, text anchor left. Behind the person.
-- Digit "6": font-size ~520px, bold, color #F5C200 (yellow), positioned at x=260 y=-20, text anchor left. Behind the person.
-- Spain flag rectangle: x=160 y=120, width=280 height=320. Left half red #CC0000, right half yellow #F5C200. Semi-transparent (opacity 0.7). Behind person.
+En la parte inferior, incluir los logos de SAP y BBVA, equilibrados visualmente y alineados correctamente. No añadir estadísticas deportivas, puntuaciones, altura, peso, fecha, club ni información adicional.
 
-=== TOP-RIGHT CORNER (x=460 to x=580, y=20 to y=100) ===
-White FIFA World Cup trophy icon silhouette, ~50×60px, at x=490 y=25.
-Text "FIFA" in white, bold 14px, centered below trophy at y=92.
+El resultado debe ser un diseño digital limpio, nítido y profesional, sin simular papel, impresión física, arrugas, brillos, textura de cromo real, bordes envejecidos o material impreso. Cuidar especialmente los bordes del recorte, la legibilidad del texto, la alineación de los elementos y la coherencia visual.
 
-=== PERSON (y=30 to y=560, centered horizontally) ===
-Take the person from the provided photo. Remove their background with a precise cutout.
-Place them centered at x=300, spanning from y=30 to y=560.
-Face fills roughly y=30 to y=280. Upper body visible down to y=560.
-Person appears IN FRONT of the "26" numbers and flag rectangle.
+IMPORTANTE — Formato obligatorio:
+- Orientación VERTICAL, más alto que ancho, relación 3:4 (por ejemplo 600×800 píxeles)
+- NO horizontal, NO cuadrado
+- Canvas de 600 píxeles de ancho × 800 píxeles de alto
 
-=== RIGHT SIDE ELEMENTS (x=540 to x=590) ===
-Circular Spain flag badge, diameter 60px, center at x=545 y=460.
-Text "E", "S", "P" stacked vertically at x=570, y=500/535/570, bold 28px, color #1A7A75.
-
-=== BOTTOM INFO SECTION (y=570 to y=730) ===
-Dark teal pill (#1A6B65), x=20 y=575, width=560 height=52, rounded 26px:
-  Text "${req.playerName.toUpperCase()}" white bold 22px centered at y=608.
-
-Dark teal pill (#1A6B65), x=20 y=635, width=560 height=40, rounded 20px:
-  Text "${req.role}  |  ${req.skill}" white semibold 14px centered at y=660.
-
-Dark teal pill (#1A6B65), x=20 y=683, width=560 height=36, rounded 18px:
-  Text "Estilo: ${req.leadershipStyle}" white regular 13px centered at y=706.
-
-=== FOOTER BAR (y=740 to y=840) ===
-White rectangle x=0 y=740 width=600 height=100.
-Text "SAP" in #008FD3 bold 20px at x=220 y=798.
-Vertical line x=300 y=760 to y=820, color #CCCCCC, width 1px.
-Text "BBVA" in #004481 bold 20px at x=370 y=798.
-
-=== FINAL OUTPUT ===
-Render all layers in order (background → numbers → person → details → pills → footer).
-Output: single PNG image, exactly 600 wide × 840 tall pixels. PORTRAIT. NOT landscape. NOT square.`;
+EVITAR:
+- Simular papel físico, plástico, brillos, arrugas o textura de impresión
+- Bordes gastados o envejecidos
+- Cambiar el logo superior derecho
+- Añadir estadísticas deportivas
+- Deformar el rostro de la persona
+- Texto ilegible o descentrado`;
 }
 
 function buildDefaultStats(role: Role): { stats: CardStats; playerName: string } {
