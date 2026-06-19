@@ -35,35 +35,43 @@ const ROLE_COLORS: Record<Role, { bg: string; accent: string; text: string }> = 
 
 function buildPrompt(req: GenerateRequestBody): string {
   const msg1 = `${req.role} — ${req.skill}`;
-  const msg2 = `Estilo de liderazgo: ${req.leadershipStyle}`;
+  const msg2 = `Estilo: ${req.leadershipStyle}`;
   const msg3 = `SAP AI Core · Executive Card`;
 
-  return `Crear un cromo digital vertical en relación de aspecto 3:4, inspirado en cromos futbolísticos retro pero con acabado digital limpio y moderno. Usar la foto proporcionada como referencia principal para el retrato, manteniendo la identidad, rostro, barba, peinado, color de ojos y expresión natural de la persona. Recortar limpiamente a la persona del fondo original e integrarla en el centro del cromo, de pecho hacia arriba, con una camiseta de fútbol inspirada en España: roja, con detalles amarillos/dorados y azul marino, estilo selección española moderna, sin copiar exactamente una equipación oficial.
+  return `TASK: Take the person from Image 1 (the photo) and place them onto a collectible sticker card.
 
-El fondo debe ser turquesa/aqua, con grandes formas gráficas abstractas o numerales en rojo y amarillo detrás del retrato. Mantener una composición limpia, deportiva y coleccionable. En la esquina superior derecha debe aparecer exactamente el mismo emblema blanco fijo usado en el cromo base, con el texto "FIFA" debajo y un pequeño "TM". No cambiar este logo por ningún otro icono.
+The final result must be a VERTICAL portrait image (600×800px, taller than wide, 3:4 ratio).
 
-En el lateral derecho, añadir una insignia con la bandera de España y el texto vertical "ESP" en letras grandes blancas o con contorno blanco. En la zona inferior, colocar una barra naranja redondeada con el nombre "${req.playerName.toUpperCase()}" en blanco, grande, centrado y en mayúsculas. Debajo, colocar tres barras naranjas redondeadas con estos tres mensajes exactos:
-- Barra 1: "${msg1}"
-- Barra 2: "${msg2}"
-- Barra 3: "${msg3}"
-Usar texto blanco centrado y perfectamente legible en cada barra.
+STEP 1 — Extract the person from Image 1:
+- Cut out the person with a clean, precise background removal
+- Keep: face, hair, beard, shoulders, upper chest
+- Remove: everything that is not the person (background, furniture, walls, etc.)
+- Dress the person in a red Spain football jersey (red shirt, yellow/gold details, blue navy accents)
 
-En la parte inferior, incluir los logos de SAP y BBVA, equilibrados visualmente y alineados correctamente. No añadir estadísticas deportivas, puntuaciones, altura, peso, fecha, club ni información adicional.
+STEP 2 — Build the card background (paint this from scratch):
+- Full card background: solid teal color #29B8B0, rounded corners 16px
+- Large "2" digit: solid RED (#CC0000), font-size ~580px bold, positioned left side, partially cropped. Behind the person.
+- Large "6" digit: solid YELLOW (#F5C200), font-size ~580px bold, positioned right side, partially cropped. Behind the person.
+- Top-right corner: white FIFA World Cup trophy silhouette with "FIFA" text below in white
+- Right side (~55% height): circular Spain flag badge (red stripe, yellow stripe, red stripe)
+- Right edge: letters E, S, P stacked vertically in bold white
 
-El resultado debe ser un diseño digital limpio, nítido y profesional, sin simular papel, impresión física, arrugas, brillos, textura de cromo real, bordes envejecidos o material impreso. Cuidar especialmente los bordes del recorte, la legibilidad del texto, la alineación de los elementos y la coherencia visual.
+STEP 3 — Composite person onto card:
+- Place the extracted person IN FRONT of the "26" background numbers
+- Center them horizontally
+- Position vertically: face starts near top (y≈50px), body extends to y≈590px
+- The person's face must be large, clear, prominent — taking up roughly 40% of the card height
+- Person is IN FRONT of everything in the background
 
-IMPORTANTE — Formato obligatorio:
-- Orientación VERTICAL, más alto que ancho, relación 3:4 (por ejemplo 600×800 píxeles)
-- NO horizontal, NO cuadrado
-- Canvas de 600 píxeles de ancho × 800 píxeles de alto
+STEP 4 — Add bottom info section:
+- Orange pill (#E8441A), full-width, rounded: "${req.playerName.toUpperCase()}" in large bold white text
+- 3 smaller orange pills below:
+  1. "${msg1}"
+  2. "${msg2}"
+  3. "${msg3}"
+- White rounded rectangle at very bottom: "SAP" in blue | divider | "BBVA" in dark blue
 
-EVITAR:
-- Simular papel físico, plástico, brillos, arrugas o textura de impresión
-- Bordes gastados o envejecidos
-- Cambiar el logo superior derecho
-- Añadir estadísticas deportivas
-- Deformar el rostro de la persona
-- Texto ilegible o descentrado`;
+OUTPUT: Single vertical PNG image, 600 wide × 800 tall. Portrait. The person must be clearly visible in the upper portion of the card.`;
 }
 
 function buildDefaultStats(role: Role): { stats: CardStats; playerName: string } {
