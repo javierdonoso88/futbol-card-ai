@@ -41,7 +41,13 @@ export default function App() {
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ imageBase64: upload.imageBase64, mimeType: upload.mimeType, role, skill, leadershipStyle, playerName }),
       });
-      const data = await res.json() as { error?: string } & GenerateResponse;
+      const text = await res.text();
+      let data: { error?: string } & GenerateResponse;
+      try {
+        data = JSON.parse(text);
+      } catch {
+        throw new Error(`Error al procesar la respuesta del servidor: ${text.substring(0, 100)}`);
+      }
       if (!res.ok) throw new Error(data.error ?? `Error ${res.status}`);
       setResult(data);
       setView('result');
@@ -200,19 +206,26 @@ export default function App() {
               <div className="flex flex-col gap-4">
                 <div className="bbva-card p-6 flex flex-col items-center gap-4 sticky top-6">
                   <p className="text-[#004481] font-semibold text-sm w-full">Vista previa</p>
-                  {/* Placeholder card */}
-                  <div className="relative rounded-xl overflow-hidden"
-                    style={{ width: 200, height: 280,
-                      background: 'linear-gradient(160deg, #5C4409 0%, #C8960C 25%, #FFD700 50%, #C8960C 75%, #5C4409 100%)',
-                      boxShadow: '0 0 0 2px #B8860B, 0 8px 32px rgba(0,0,0,0.15)'
-                    }}
+                  {/* Placeholder card — estilo Panini teal */}
+                  <div className="relative rounded-2xl overflow-hidden flex flex-col"
+                    style={{ width: 200, height: 280, background: '#29B8B0', boxShadow: '0 8px 32px rgba(0,0,0,0.18)' }}
                   >
-                    <div className="absolute inset-0 card-texture" />
-                    <div className="absolute inset-0 flex flex-col items-center justify-center gap-2 opacity-40">
-                      <svg width="40" height="40" viewBox="0 0 24 24" fill="#1a0900">
+                    {/* Número 2 decorativo */}
+                    <div style={{ position: 'absolute', left: -10, top: 10, fontSize: 160, fontWeight: 900, color: '#CC0000', opacity: 0.85, lineHeight: 1, fontFamily: 'Oswald, sans-serif', userSelect: 'none' }}>2</div>
+                    {/* Número 6 decorativo */}
+                    <div style={{ position: 'absolute', right: -8, top: 30, fontSize: 160, fontWeight: 900, color: '#F5C200', opacity: 0.85, lineHeight: 1, fontFamily: 'Oswald, sans-serif', userSelect: 'none' }}>6</div>
+                    {/* Icono persona */}
+                    <div className="flex-1 flex flex-col items-center justify-center gap-2 relative z-10">
+                      <svg width="44" height="44" viewBox="0 0 24 24" fill="rgba(0,0,0,0.25)">
                         <circle cx="12" cy="8" r="4"/><path d="M4 20c0-4 3.6-7 8-7s8 3 8 7"/>
                       </svg>
-                      <span className="text-[#1a0900] text-xs font-bold font-oswald uppercase tracking-widest">Tu foto aquí</span>
+                      <span style={{ fontSize: 9, fontWeight: 700, color: 'rgba(0,0,0,0.35)', letterSpacing: '0.1em', textTransform: 'uppercase' }}>Tu foto aquí</span>
+                    </div>
+                    {/* Footer SAP|BBVA */}
+                    <div style={{ background: 'white', padding: '6px 10px', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 8 }}>
+                      <span style={{ fontWeight: 800, fontSize: 11, color: '#008FD3' }}>SAP</span>
+                      <span style={{ width: 1, height: 14, background: '#ccc', display: 'block' }} />
+                      <span style={{ fontWeight: 800, fontSize: 11, color: '#004481' }}>BBVA</span>
                     </div>
                   </div>
                   <div className="text-center">
