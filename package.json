@@ -13,6 +13,8 @@
     "start": "node dist/server/index.js"
   },
   "dependencies": {
+    "@types/sharp": "^0.31.1",
+    "canvas": "^3.2.3",
     "clsx": "^2.1.1",
     "cors": "^2.8.5",
     "express": "^4.18.2",
@@ -21,6 +23,7 @@
     "lucide-react": "^0.446.0",
     "react": "^18.3.1",
     "react-dom": "^18.3.1",
+    "sharp": "^0.35.1",
     "tailwind-merge": "^2.5.2"
   },
   "devDependencies": {

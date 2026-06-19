@@ -1,3 +1,4 @@
+import sharp from 'sharp';
 import type { Role, CardStats, GenerateRequestBody, GenerateResponse } from './types';
 
 const CLIENT_ID      = process.env.AICORE_CLIENT_ID      ?? '';
@@ -110,6 +111,32 @@ interface GeminiResponse {
   candidates?: Array<{ content?: { parts?: GeminiPart[] } }>;
 }
 
+// Force portrait 600×840: if the image is landscape or square, rotate it.
+// If already portrait but wrong size, resize keeping aspect ratio centered on teal bg.
+async function forcePortrait(base64: string): Promise<{ base64: string; mimeType: string }> {
+  const TARGET_W = 600;
+  const TARGET_H = 840;
+  const buf = Buffer.from(base64, 'base64');
+  const meta = await sharp(buf).metadata();
+  const w = meta.width ?? TARGET_W;
+  const h = meta.height ?? TARGET_H;
+
+  let pipeline = sharp(buf);
+
+  // If landscape (wider than tall), rotate 90° clockwise
+  if (w > h) {
+    pipeline = pipeline.rotate(90);
+  }
+
+  // Resize to fit within 600×840, then composite centered on teal background
+  const resized = await pipeline
+    .resize(TARGET_W, TARGET_H, { fit: 'contain', background: { r: 41, g: 184, b: 176, alpha: 1 } })
+    .png()
+    .toBuffer();
+
+  return { base64: resized.toString('base64'), mimeType: 'image/png' };
+}
+
 async function callGemini(token: string, body: object): Promise<GeminiResponse> {
   const url = `${AI_API_URL}/v2/inference/deployments/${DEPLOYMENT_ID}/models/gemini-2.5-flash-image:generateContent`;
   const res = await fetch(url, {
@@ -155,9 +182,11 @@ export async function generateCard(req: GenerateRequestBody): Promise<GenerateRe
   const { stats, playerName } = buildDefaultStats(req.role);
 
   if (imagePart?.inlineData) {
+    const portrait = await forcePortrait(imagePart.inlineData.data);
+    console.log('Portrait enforced:', portrait.mimeType);
     return {
-      imageBase64: imagePart.inlineData.data,
-      mimeType: imagePart.inlineData.mimeType,
+      imageBase64: portrait.base64,
+      mimeType: portrait.mimeType,
       stats,
       playerName: req.playerName || playerName,
       fallback: false,
