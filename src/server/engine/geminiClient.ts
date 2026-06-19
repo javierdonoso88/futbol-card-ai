@@ -1,3 +1,4 @@
+import sharp from 'sharp';
 import type { Role, CardStats, GenerateRequestBody, GenerateResponse } from './types';
 
 const CLIENT_ID      = process.env.AICORE_CLIENT_ID      ?? '';
@@ -100,6 +101,19 @@ interface GeminiResponse {
   candidates?: Array<{ content?: { parts?: GeminiPart[] } }>;
 }
 
+// Gemini always outputs landscape. Crop the center 3:4 portion to get portrait.
+async function cropToPortrait(base64: string): Promise<{ base64: string; mimeType: string }> {
+  const buf = Buffer.from(base64, 'base64');
+  const meta = await sharp(buf).metadata();
+  const w = meta.width ?? 1248;
+  const h = meta.height ?? 832;
+  if (h >= w) return { base64, mimeType: 'image/png' }; // already portrait
+  const newW = Math.round(h * 3 / 4);
+  const left = Math.round((w - newW) / 2);
+  const cropped = await sharp(buf).extract({ left, top: 0, width: newW, height: h }).png().toBuffer();
+  return { base64: cropped.toString('base64'), mimeType: 'image/png' };
+}
+
 async function callGemini(token: string, body: object): Promise<GeminiResponse> {
   const url = `${AI_API_URL}/v2/inference/deployments/${DEPLOYMENT_ID}/models/gemini-2.5-flash-image:generateContent`;
   const res = await fetch(url, {
@@ -145,10 +159,12 @@ export async function generateCard(req: GenerateRequestBody): Promise<GenerateRe
   const { stats, playerName } = buildDefaultStats(req.role);
 
   if (imagePart?.inlineData) {
-    console.log('Image received from Gemini, mimeType:', imagePart.inlineData.mimeType);
+    // Gemini always returns landscape 1248×832 — crop center to portrait 3:4
+    const cropped = await cropToPortrait(imagePart.inlineData.data);
+    console.log('Portrait crop applied:', cropped.mimeType);
     return {
-      imageBase64: imagePart.inlineData.data,
-      mimeType: imagePart.inlineData.mimeType,
+      imageBase64: cropped.base64,
+      mimeType: cropped.mimeType,
       stats,
       playerName: req.playerName || playerName,
       fallback: false,
