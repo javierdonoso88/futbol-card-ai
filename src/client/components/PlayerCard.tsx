@@ -223,13 +223,12 @@ export default function PlayerCard({ result, role, uploadPreview }: Props) {
         transition={{ delay: 0.4 }}
         onClick={handleDownload}
         disabled={downloading}
-        className="flex items-center gap-2 px-6 py-3 rounded-xl font-semibold text-sm transition-all duration-300
-                   bg-[#0a1f12] border border-[#2a6b3a] text-[#FFD700]
-                   hover:border-[#FFD700] hover:bg-[#0d2818] hover:shadow-[0_0_20px_rgba(255,215,0,0.2)]
+        className="flex items-center gap-2 px-6 py-3 rounded-lg font-semibold text-sm transition-all duration-200
+                   bg-[#004481] text-white hover:bg-[#003366] shadow-md hover:shadow-lg
                    disabled:opacity-50 disabled:cursor-not-allowed"
       >
         {downloading ? (
-          <div className="w-4 h-4 border-2 border-[#FFD700] border-t-transparent rounded-full animate-spin" />
+          <div className="w-4 h-4 border-2 border-white/40 border-t-white rounded-full animate-spin" />
         ) : (
           <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
             <path d="M21 15v4a2 2 0 01-2 2H5a2 2 0 01-2-2v-4"/>

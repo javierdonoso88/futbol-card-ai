@@ -1,5 +1,4 @@
 import { motion } from 'framer-motion';
-import { Sparkles } from 'lucide-react';
 
 interface Props {
   onGenerate: () => void;
@@ -12,41 +11,27 @@ export default function GenerateButton({ onGenerate, disabled, loading }: Props)
     <motion.button
       onClick={onGenerate}
       disabled={disabled || loading}
-      whileHover={!disabled && !loading ? { scale: 1.02 } : {}}
-      whileTap={!disabled && !loading ? { scale: 0.98 } : {}}
-      className={`relative w-full py-4 px-8 rounded-xl text-lg font-bold uppercase tracking-widest font-oswald
-        transition-all duration-300 overflow-hidden
+      whileHover={!disabled && !loading ? { scale: 1.01 } : {}}
+      whileTap={!disabled && !loading ? { scale: 0.99 } : {}}
+      className={`relative w-full py-3.5 px-8 rounded-lg text-sm font-semibold
+        transition-all duration-200 overflow-hidden
         ${disabled || loading
-          ? 'bg-[#2a2a2a] border border-[#444] text-gray-500 cursor-not-allowed'
-          : 'text-[#0d0d0d] cursor-pointer glow-gold glow-gold-hover'
+          ? 'bg-gray-200 text-gray-400 cursor-not-allowed'
+          : 'bg-[#004481] text-white hover:bg-[#003366] shadow-md hover:shadow-lg cursor-pointer'
         }`}
-      style={disabled || loading ? {} : {
-        background: 'linear-gradient(135deg, #B8860B 0%, #FFD700 35%, #FFF2AA 50%, #FFD700 65%, #B8860B 100%)',
-      }}
     >
-      {/* Shimmer effect on active state */}
-      {!disabled && !loading && (
-        <span
-          className="absolute inset-0 pointer-events-none"
-          style={{
-            background: 'linear-gradient(105deg, transparent 30%, rgba(255,255,255,0.25) 50%, transparent 70%)',
-            backgroundSize: '200% 100%',
-            animation: 'gold-text-shimmer 2.5s linear infinite',
-          }}
-        />
-      )}
-
-      <span className="relative flex items-center justify-center gap-3">
+      <span className="flex items-center justify-center gap-2">
         {loading ? (
           <>
-            <span className="text-2xl spin-ball inline-block">⚽</span>
-            Generando tu cromo...
+            <div className="w-4 h-4 border-2 border-white/40 border-t-white rounded-full animate-spin" />
+            Generando cromo...
           </>
         ) : (
           <>
-            <Sparkles size={20} />
-            Generar Cromo
-            <Sparkles size={20} />
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+              <polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2"/>
+            </svg>
+            Generar Cromo Ejecutivo
           </>
         )}
       </span>

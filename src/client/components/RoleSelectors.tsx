@@ -31,10 +31,10 @@ const ROLE_DATA: Record<Role, { skills: string[]; styles: string[] }> = {
 const ROLES: Role[] = ['CEO', 'CFO', 'CTO', 'COO'];
 
 const ROLE_LABELS: Record<Role, string> = {
-  CEO: '👑 CEO — Chief Executive Officer',
-  CFO: '💰 CFO — Chief Financial Officer',
-  CTO: '💻 CTO — Chief Technology Officer',
-  COO: '⚙️ COO — Chief Operations Officer',
+  CEO: 'CEO — Chief Executive Officer',
+  CFO: 'CFO — Chief Financial Officer',
+  CTO: 'CTO — Chief Technology Officer',
+  COO: 'COO — Chief Operations Officer',
 };
 
 export default function RoleSelectors({ role, skill, leadershipStyle, onRoleChange, onSkillChange, onStyleChange }: Props) {
@@ -48,58 +48,25 @@ export default function RoleSelectors({ role, skill, leadershipStyle, onRoleChan
 
   return (
     <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
-      {/* Selector 1: Rol */}
-      <div className="flex flex-col gap-2">
-        <label className="text-[#FFD700] text-xs font-semibold uppercase tracking-widest">
-          Rol Ejecutivo
-        </label>
-        <div className="relative">
-          <select
-            value={role}
-            onChange={(e) => handleRoleChange(e.target.value as Role)}
-            className="select-dark font-semibold pr-10"
-          >
-            {ROLES.map(r => (
-              <option key={r} value={r}>{ROLE_LABELS[r]}</option>
-            ))}
-          </select>
-        </div>
+      <div className="flex flex-col gap-1.5">
+        <label className="text-gray-600 text-xs font-semibold uppercase tracking-wide">Rol Ejecutivo</label>
+        <select value={role} onChange={(e) => handleRoleChange(e.target.value as Role)} className="select-bbva">
+          {ROLES.map(r => <option key={r} value={r}>{ROLE_LABELS[r]}</option>)}
+        </select>
       </div>
 
-      {/* Selector 2: Habilidad */}
-      <div className="flex flex-col gap-2">
-        <label className="text-[#FFD700] text-xs font-semibold uppercase tracking-widest">
-          Habilidad Principal
-        </label>
-        <div className="relative">
-          <select
-            value={skill}
-            onChange={(e) => onSkillChange(e.target.value)}
-            className="select-dark pr-10"
-          >
-            {data.skills.map(s => (
-              <option key={s} value={s}>{s}</option>
-            ))}
-          </select>
-        </div>
+      <div className="flex flex-col gap-1.5">
+        <label className="text-gray-600 text-xs font-semibold uppercase tracking-wide">Habilidad Principal</label>
+        <select value={skill} onChange={(e) => onSkillChange(e.target.value)} className="select-bbva">
+          {data.skills.map(s => <option key={s} value={s}>{s}</option>)}
+        </select>
       </div>
 
-      {/* Selector 3: Estilo de liderazgo */}
-      <div className="flex flex-col gap-2">
-        <label className="text-[#FFD700] text-xs font-semibold uppercase tracking-widest">
-          Estilo de Liderazgo
-        </label>
-        <div className="relative">
-          <select
-            value={leadershipStyle}
-            onChange={(e) => onStyleChange(e.target.value)}
-            className="select-dark pr-10"
-          >
-            {data.styles.map(s => (
-              <option key={s} value={s}>{s}</option>
-            ))}
-          </select>
-        </div>
+      <div className="flex flex-col gap-1.5">
+        <label className="text-gray-600 text-xs font-semibold uppercase tracking-wide">Estilo de Liderazgo</label>
+        <select value={leadershipStyle} onChange={(e) => onStyleChange(e.target.value)} className="select-bbva">
+          {data.styles.map(s => <option key={s} value={s}>{s}</option>)}
+        </select>
       </div>
     </div>
   );
