@@ -164,6 +164,7 @@ export async function generateCard(req: GenerateRequestBody): Promise<GenerateRe
 
   const body = {
     contents: [{
+      role: 'user',
       parts: [
         { inlineData: { mimeType: req.mimeType, data: req.imageBase64 } },
         { text: prompt },
