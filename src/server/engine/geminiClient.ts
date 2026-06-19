@@ -93,26 +93,17 @@ interface GeminiResponse {
   candidates?: Array<{ content?: { parts?: GeminiPart[] } }>;
 }
 
-// Force portrait 600×840: if the image is landscape or square, rotate it.
-// If already portrait but wrong size, resize keeping aspect ratio centered on teal bg.
+// Ensure portrait 600×840 — resize to fit without rotating (rotation breaks the design)
 async function forcePortrait(base64: string): Promise<{ base64: string; mimeType: string }> {
   const TARGET_W = 600;
   const TARGET_H = 840;
   const buf = Buffer.from(base64, 'base64');
-  const meta = await sharp(buf).metadata();
-  const w = meta.width ?? TARGET_W;
-  const h = meta.height ?? TARGET_H;
 
-  let pipeline = sharp(buf);
-
-  // If landscape (wider than tall), rotate 90° clockwise
-  if (w > h) {
-    pipeline = pipeline.rotate(90);
-  }
-
-  // Resize to fit within 600×840, then composite centered on teal background
-  const resized = await pipeline
-    .resize(TARGET_W, TARGET_H, { fit: 'contain', background: { r: 41, g: 184, b: 176, alpha: 1 } })
+  const resized = await sharp(buf)
+    .resize(TARGET_W, TARGET_H, {
+      fit: 'contain',
+      background: { r: 41, g: 184, b: 176, alpha: 1 },
+    })
     .png()
     .toBuffer();
 
