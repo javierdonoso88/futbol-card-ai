@@ -21,6 +21,7 @@ export default function App() {
   const [role, setRole]                       = useState<Role>('CEO');
   const [skill, setSkill]                     = useState(ROLE_DATA_DEFAULTS.CEO.skill);
   const [leadershipStyle, setLeadershipStyle] = useState(ROLE_DATA_DEFAULTS.CEO.style);
+  const [playerName, setPlayerName]           = useState('');
   const [result, setResult]                   = useState<GenerateResponse | null>(null);
   const [error, setError]                     = useState<string | null>(null);
 
@@ -38,7 +39,7 @@ export default function App() {
       const res = await fetch('/api/generate', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ imageBase64: upload.imageBase64, mimeType: upload.mimeType, role, skill, leadershipStyle }),
+        body: JSON.stringify({ imageBase64: upload.imageBase64, mimeType: upload.mimeType, role, skill, leadershipStyle, playerName }),
       });
       const data = await res.json() as { error?: string } & GenerateResponse;
       if (!res.ok) throw new Error(data.error ?? `Error ${res.status}`);
@@ -51,7 +52,7 @@ export default function App() {
   };
 
   const handleReset = () => { setView('upload'); setResult(null); setError(null); };
-  const canGenerate = !!upload && !!skill && !!leadershipStyle;
+  const canGenerate = !!upload && !!skill && !!leadershipStyle && !!playerName.trim();
 
   return (
     <div className="min-h-screen flex flex-col bg-[#F4F6F9]">
@@ -156,13 +157,28 @@ export default function App() {
                 {/* Step 2 */}
                 <div className="bbva-card p-6">
                   <StepLabel step={2} label="Configura tu perfil ejecutivo" />
-                  <div className="mt-4">
+                  <div className="mt-4 flex flex-col gap-4">
                     <RoleSelectors
                       role={role} skill={skill} leadershipStyle={leadershipStyle}
                       onRoleChange={handleRoleChange}
                       onSkillChange={setSkill}
                       onStyleChange={setLeadershipStyle}
                     />
+                    {/* Nombre */}
+                    <div className="flex flex-col gap-1.5">
+                      <label className="text-gray-600 text-xs font-semibold uppercase tracking-wide">
+                        Tu nombre <span className="text-red-400">*</span>
+                      </label>
+                      <input
+                        type="text"
+                        placeholder="Ej: MARÍA GARCÍA"
+                        value={playerName}
+                        onChange={e => setPlayerName(e.target.value)}
+                        className="bg-white border border-[#CCCCCC] text-[#121212] rounded-lg px-4 py-3 w-full
+                                   focus:outline-none focus:border-[#004481] focus:ring-2 focus:ring-[#004481]/20
+                                   transition-all duration-200 text-sm font-medium placeholder:text-gray-300"
+                      />
+                    </div>
                   </div>
                 </div>
 
@@ -171,8 +187,10 @@ export default function App() {
                   <StepLabel step={3} label="Genera tu cromo" />
                   <div className="mt-4">
                     <GenerateButton onGenerate={handleGenerate} disabled={!canGenerate} loading={false} />
-                    {!upload && (
-                      <p className="text-center text-gray-400 text-xs mt-3">Sube una foto para activar el generador</p>
+                    {(!upload || !playerName.trim()) && (
+                      <p className="text-center text-gray-400 text-xs mt-3">
+                        {!upload ? 'Sube una foto para activar el generador' : 'Introduce tu nombre para continuar'}
+                      </p>
                     )}
                   </div>
                 </div>

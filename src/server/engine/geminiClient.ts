@@ -25,42 +25,61 @@ async function getAccessToken(): Promise<string> {
   return tokenCache.token;
 }
 
-const STAT_LABELS: Record<Role, string[]> = {
-  CFO: ['VISION', 'STRATEGY', 'ANALYTICS', 'LEADERSHIP', 'NETWORKS', 'EXECUTION'],
-  CTO: ['VISION', 'CODING', 'SECURITY', 'INNOVATION', 'LEADERSHIP', 'AGILITY'],
-  COO: ['PROCESS', 'SUPPLY', 'TEAMS', 'KPIs', 'COACHING', 'EXECUTION'],
-  CEO: ['VISION', 'STRATEGY', 'CULTURE', 'P&L', 'MARKET', 'LEADERSHIP'],
+const ROLE_COLORS: Record<Role, { bg: string; accent: string; text: string }> = {
+  CEO: { bg: '#2EC4B6', accent: '#E63946',  text: 'CEO' },
+  CFO: { bg: '#2EC4B6', accent: '#1D3557',  text: 'CFO' },
+  CTO: { bg: '#2EC4B6', accent: '#F4A261',  text: 'CTO' },
+  COO: { bg: '#2EC4B6', accent: '#6A0572',  text: 'COO' },
 };
 
-function buildDefaultStats(role: Role, labels: string[]): CardStats {
-  return {
-    overall: 87,
-    stat1: 89, label1: labels[0], stat2: 86, label2: labels[1],
-    stat3: 83, label3: labels[2], stat4: 91, label4: labels[3],
-    stat5: 77, label5: labels[4], stat6: 88, label6: labels[5],
-  };
+function buildPrompt(req: GenerateRequestBody): string {
+  const colors = ROLE_COLORS[req.role];
+
+  return `You are a professional graphic designer. Create a Panini FIFA World Cup 2026 collectible sticker card in VERTICAL portrait format (portrait orientation, roughly 3:4 ratio) based on the provided photo.
+
+EXACT STYLE — copy this precisely:
+- Overall card background: teal/mint green (#2EC4B6) with slight paper texture
+- Rounded corners (about 12px radius)
+- TOP SECTION (photo area, ~65% of card height):
+  * Large decorative "26" number in the background (bold, slightly transparent, split: "2" on left in dark green, "6" on right in terracotta/orange-red), overlapping behind the person
+  * Top-right corner: FIFA World Cup 2026 trophy logo (white silhouette) with "FIFA" text below it
+  * The person from the photo centered, background removed, placed naturally over the "26" background
+  * Country flag badge (circular, bottom-right of photo area) — use Spain flag (red/yellow/red stripes) since this is for BBVA Spain
+  * Country code "ESP" text vertically on the right edge, bold white letters rotated 90°
+- BOTTOM SECTION (~35% of card height):
+  * Orange-red rounded pill/banner: player name "${req.playerName.toUpperCase()}" in large bold white text
+  * Below that, 3 smaller orange-red rounded pills stacked:
+    - Pill 1: "${req.role} — ${req.skill}"
+    - Pill 2: "Estilo: ${req.leadershipStyle}"
+    - Pill 3: "SAP AI Core · Executive Card"
+  * Bottom footer bar (white/light): "SAP | BBVA" logo lockup centered — show "SAP" in SAP blue and "BBVA" in BBVA dark blue, separated by a vertical line
+
+IMPORTANT:
+- This is a VERTICAL sticker/card, not horizontal
+- The person's face must be clearly visible and prominent
+- Remove the person's background completely — they appear directly over the card design
+- Do NOT add FIFA or Panini logos (trademark issues) — replace with "AI CARD" and the SAP|BBVA lockup
+- Make it look like a real collectible sticker card, high quality, print-ready
+- Output the complete card as a single image`;
 }
 
-function parseStats(text: string, role: Role, labels: string[]): { stats: CardStats; playerName: string } {
-  try {
-    const match = text.match(/\{[\s\S]*?"overall"[\s\S]*?\}/);
-    if (!match) return { stats: buildDefaultStats(role, labels), playerName: 'THE EXECUTIVE' };
-    const raw = JSON.parse(match[0]) as Record<string, unknown>;
-    return {
-      stats: {
-        overall: Number(raw.overall) || 87,
-        stat1: Number(raw.stat1) || 80, label1: String(raw.label1 || labels[0]),
-        stat2: Number(raw.stat2) || 80, label2: String(raw.label2 || labels[1]),
-        stat3: Number(raw.stat3) || 80, label3: String(raw.label3 || labels[2]),
-        stat4: Number(raw.stat4) || 80, label4: String(raw.label4 || labels[3]),
-        stat5: Number(raw.stat5) || 80, label5: String(raw.label5 || labels[4]),
-        stat6: Number(raw.stat6) || 80, label6: String(raw.label6 || labels[5]),
-      },
-      playerName: String(raw.playerName || 'THE EXECUTIVE').toUpperCase(),
-    };
-  } catch {
-    return { stats: buildDefaultStats(role, labels), playerName: 'THE EXECUTIVE' };
-  }
+function buildDefaultStats(role: Role): { stats: CardStats; playerName: string } {
+  const labels: Record<Role, string[]> = {
+    CFO: ['VISION', 'STRATEGY', 'ANALYTICS', 'LEADERSHIP', 'NETWORKS', 'EXECUTION'],
+    CTO: ['VISION', 'CODING', 'SECURITY', 'INNOVATION', 'LEADERSHIP', 'AGILITY'],
+    COO: ['PROCESS', 'SUPPLY', 'TEAMS', 'KPIs', 'COACHING', 'EXECUTION'],
+    CEO: ['VISION', 'STRATEGY', 'CULTURE', 'P&L', 'MARKET', 'LEADERSHIP'],
+  };
+  const l = labels[role];
+  return {
+    stats: {
+      overall: 87,
+      stat1: 89, label1: l[0], stat2: 86, label2: l[1],
+      stat3: 83, label3: l[2], stat4: 91, label4: l[3],
+      stat5: 77, label5: l[4], stat6: 88, label6: l[5],
+    },
+    playerName: 'THE EXECUTIVE',
+  };
 }
 
 interface GeminiPart {
@@ -73,7 +92,6 @@ interface GeminiResponse {
 
 async function callGemini(token: string, body: object): Promise<GeminiResponse> {
   const url = `${AI_API_URL}/v2/inference/deployments/${DEPLOYMENT_ID}/models/gemini-2.5-flash-image:generateContent`;
-  console.log(`Calling gemini-2.5-flash-image: ${url}`);
   const res = await fetch(url, {
     method: 'POST',
     headers: {
@@ -85,38 +103,13 @@ async function callGemini(token: string, body: object): Promise<GeminiResponse> 
   });
   const text = await res.text();
   if (!res.ok) throw new Error(`Gemini AI Core error ${res.status}: ${text}`);
-  console.log(`Response status: ${res.status}, snippet: ${text.substring(0, 150)}`);
+  console.log(`Gemini status: ${res.status}, snippet: ${text.substring(0, 120)}`);
   return JSON.parse(text) as GeminiResponse;
 }
 
 export async function generateCard(req: GenerateRequestBody): Promise<GenerateResponse> {
   const token = await getAccessToken();
-  const labels = STAT_LABELS[req.role];
-
-  const prompt = `You are a professional digital artist specializing in FIFA Ultimate Team collectible cards.
-
-Transform the provided photo into a complete FIFA Ultimate Team gold card image.
-
-CRITICAL INSTRUCTIONS:
-1. Remove the person's background completely — keep ONLY the person (head + upper body)
-2. Place the person on a gold metallic card background
-3. The final output must be a complete card image (not just the person)
-
-Card design:
-- Gold metallic gradient background: #5C4409 → #C8960C → #FFD700 → #FFF2AA → #FFD700 → #C8960C → #5C4409
-- Subtle diagonal texture lines on the gold
-- Diagonal shimmer stripe (semi-transparent white)
-- Person centered, upper body, vignette fade at bottom blending into the gold
-- TOP LEFT: large bold rating number, role "${req.role}" below it
-- TOP RIGHT: "★ ★ ★" stars and "AI ELITE" badge
-- BELOW PERSON: dark semi-transparent name banner
-- BOTTOM: 6 stats in 2 columns (3 left, 3 right)
-- FOOTER: small "FÚTBOL CARD AI" text
-
-After the card image, return ONLY this JSON (no markdown):
-{"overall":88,"stat1":85,"label1":"${labels[0]}","stat2":82,"label2":"${labels[1]}","stat3":79,"label3":"${labels[2]}","stat4":91,"label4":"${labels[3]}","stat5":76,"label5":"${labels[4]}","stat6":84,"label6":"${labels[5]}","playerName":"THE VISIONARY"}
-
-Stats rules: overall 82-95, each stat 72-99, boost stats for "${req.skill}" and "${req.leadershipStyle}", playerName uppercase 2-word title.`;
+  const prompt = buildPrompt(req);
 
   const body = {
     contents: [{
@@ -136,29 +129,27 @@ Stats rules: overall 82-95, each stat 72-99, boost stats for "${req.skill}" and 
 
   const imagePart = parts.find(p => p.inlineData?.mimeType?.startsWith('image/'));
   const textContent = parts.filter(p => p.text).map(p => p.text!).join('\n');
-
-  console.log('Text snippet:', textContent.substring(0, 200));
+  console.log('Text snippet:', textContent.substring(0, 150));
   console.log('Image found:', !!imagePart, imagePart?.inlineData?.mimeType);
 
-  const { stats, playerName } = parseStats(textContent, req.role, labels);
+  const { stats, playerName } = buildDefaultStats(req.role);
 
   if (imagePart?.inlineData) {
     return {
       imageBase64: imagePart.inlineData.data,
       mimeType: imagePart.inlineData.mimeType,
       stats,
-      playerName,
+      playerName: req.playerName || playerName,
       fallback: false,
     };
   }
 
-  // Fallback: image not returned, use original photo with AI stats
-  console.warn('No image in response, using original photo');
+  console.warn('No image returned, using original photo');
   return {
     imageBase64: req.imageBase64,
     mimeType: req.mimeType,
     stats,
-    playerName,
+    playerName: req.playerName || playerName,
     fallback: false,
   };
 }

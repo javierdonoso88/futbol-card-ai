@@ -5,10 +5,10 @@ import type { GenerateRequestBody } from '../engine/types';
 const router = express.Router();
 
 router.post('/generate', async (req, res) => {
-  const { imageBase64, mimeType, role, skill, leadershipStyle } = req.body as GenerateRequestBody;
+  const { imageBase64, mimeType, role, skill, leadershipStyle, playerName } = req.body as GenerateRequestBody;
 
-  if (!imageBase64 || !role || !skill || !leadershipStyle) {
-    return res.status(400).json({ error: 'Faltan campos: imageBase64, role, skill, leadershipStyle' });
+  if (!imageBase64 || !role || !skill || !leadershipStyle || !playerName) {
+    return res.status(400).json({ error: 'Faltan campos: imageBase64, role, skill, leadershipStyle, playerName' });
   }
   if (!['CFO', 'CTO', 'COO', 'CEO'].includes(role)) {
     return res.status(400).json({ error: 'Rol inválido. Debe ser CFO, CTO, COO o CEO' });
@@ -21,6 +21,7 @@ router.post('/generate', async (req, res) => {
       role,
       skill,
       leadershipStyle,
+      playerName,
     });
     return res.json(result);
   } catch (err: unknown) {

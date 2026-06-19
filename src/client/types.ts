@@ -30,4 +30,5 @@ export interface FormState {
   role: Role;
   skill: string;
   leadershipStyle: string;
+  playerName: string;
 }

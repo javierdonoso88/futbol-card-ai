@@ -6,6 +6,7 @@ export interface GenerateRequestBody {
   role: Role;
   skill: string;
   leadershipStyle: string;
+  playerName: string;
 }
 
 export interface CardStats {
