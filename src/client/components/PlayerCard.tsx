@@ -1,5 +1,7 @@
+import { useRef, useState } from 'react';
 import { motion } from 'framer-motion';
-import type { CardStats, GenerateResponse, Role } from '../types';
+import html2canvas from 'html2canvas';
+import type { GenerateResponse, Role } from '../types';
 
 interface Props {
   result: GenerateResponse;
@@ -46,13 +48,29 @@ export default function PlayerCard({ result, role, uploadPreview }: Props) {
     ? `data:${mimeType};base64,${imageBase64}`
     : uploadPreview;
 
-  const handleDownload = () => {
-    const a = document.createElement('a');
-    a.href = photoSrc;
-    a.download = `cromo-${role.toLowerCase()}-${playerName.toLowerCase().replace(/\s+/g, '-')}.png`;
-    document.body.appendChild(a);
-    a.click();
-    document.body.removeChild(a);
+  const cardRef = useRef<HTMLDivElement>(null);
+  const [downloading, setDownloading] = useState(false);
+
+  const handleDownload = async () => {
+    if (!cardRef.current) return;
+    setDownloading(true);
+    try {
+      const canvas = await html2canvas(cardRef.current, {
+        useCORS: true,
+        allowTaint: true,
+        scale: 3,
+        backgroundColor: null,
+        logging: false,
+      });
+      const a = document.createElement('a');
+      a.href = canvas.toDataURL('image/png');
+      a.download = `cromo-${role.toLowerCase()}-${playerName.toLowerCase().replace(/\s+/g, '-')}.png`;
+      document.body.appendChild(a);
+      a.click();
+      document.body.removeChild(a);
+    } finally {
+      setDownloading(false);
+    }
   };
 
   return (
@@ -65,6 +83,7 @@ export default function PlayerCard({ result, role, uploadPreview }: Props) {
       >
         {/* Card container — fixed FIFA UT proportions */}
         <div
+          ref={cardRef}
           className="relative rounded-xl overflow-hidden shadow-2xl"
           style={{
             width: 300,
@@ -202,16 +221,22 @@ export default function PlayerCard({ result, role, uploadPreview }: Props) {
         animate={{ opacity: 1, y: 0 }}
         transition={{ delay: 0.4 }}
         onClick={handleDownload}
+        disabled={downloading}
         className="flex items-center gap-2 px-6 py-3 rounded-xl font-semibold text-sm transition-all duration-300
                    bg-[#0a1f12] border border-[#2a6b3a] text-[#FFD700]
-                   hover:border-[#FFD700] hover:bg-[#0d2818] hover:shadow-[0_0_20px_rgba(255,215,0,0.2)]"
+                   hover:border-[#FFD700] hover:bg-[#0d2818] hover:shadow-[0_0_20px_rgba(255,215,0,0.2)]
+                   disabled:opacity-50 disabled:cursor-not-allowed"
       >
-        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-          <path d="M21 15v4a2 2 0 01-2 2H5a2 2 0 01-2-2v-4"/>
-          <polyline points="7 10 12 15 17 10"/>
-          <line x1="12" y1="15" x2="12" y2="3"/>
-        </svg>
-        Descargar Cromo
+        {downloading ? (
+          <div className="w-4 h-4 border-2 border-[#FFD700] border-t-transparent rounded-full animate-spin" />
+        ) : (
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+            <path d="M21 15v4a2 2 0 01-2 2H5a2 2 0 01-2-2v-4"/>
+            <polyline points="7 10 12 15 17 10"/>
+            <line x1="12" y1="15" x2="12" y2="3"/>
+          </svg>
+        )}
+        {downloading ? 'Generando PNG...' : 'Descargar Cromo'}
       </motion.button>
     </div>
   );
