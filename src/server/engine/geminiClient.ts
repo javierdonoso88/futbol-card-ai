@@ -13,19 +13,13 @@ let tokenCache: TokenCache | null = null;
 async function getAccessToken(): Promise<string> {
   const now = Date.now();
   if (tokenCache && tokenCache.expiresAt - now > 60_000) return tokenCache.token;
-
   const credentials = Buffer.from(`${CLIENT_ID}:${CLIENT_SECRET}`).toString('base64');
   const res = await fetch(TOKEN_URL, {
     method: 'POST',
-    headers: {
-      'Authorization': `Basic ${credentials}`,
-      'Content-Type': 'application/x-www-form-urlencoded',
-    },
+    headers: { 'Authorization': `Basic ${credentials}`, 'Content-Type': 'application/x-www-form-urlencoded' },
     body: 'grant_type=client_credentials',
   });
-
   if (!res.ok) throw new Error(`AI Core OAuth error ${res.status}: ${await res.text()}`);
-
   const data = await res.json() as { access_token: string; expires_in: number };
   tokenCache = { token: data.access_token, expiresAt: now + data.expires_in * 1000 };
   return tokenCache.token;
@@ -38,47 +32,12 @@ const STAT_LABELS: Record<Role, string[]> = {
   CEO: ['VISION', 'STRATEGY', 'CULTURE', 'P&L', 'MARKET', 'LEADERSHIP'],
 };
 
-function buildPrompt(role: Role, skill: string, leadershipStyle: string, labels: string[]): string {
-  return `You are a creative digital artist specializing in FIFA Ultimate Team collectible cards.
-
-Generate a complete FIFA Ultimate Team gold card image featuring the person from the provided photo as a top C-Suite executive player.
-
-IMPORTANT — Background:
-- Remove the original photo background completely
-- Place the person on the card's gold gradient background
-
-Card design specifications:
-- Style: FIFA Ultimate Team gold card (premium metallic gold card)
-- Background: gold gradient from dark gold (#8B6914) through bright gold (#FFD700) to light highlight (#FFF2AA) and back
-- Subtle diagonal texture lines overlaid on the gold background
-- Diagonal shimmer highlight stripe (white, semi-transparent)
-- 2px golden border with slight rounded corners
-- Person centered in the card (head and upper body), blending naturally into the gold background with a vignette fade at the bottom
-- Top-left corner: large overall rating number (bold condensed dark font), role abbreviation "${role}" below it
-- Top-right corner: 3 gold stars and a small "AI ELITE" badge
-- Below the person: player name banner (dark semi-transparent strip)
-- Bottom section: 6 stats in 2 columns of 3: ${labels.join(', ')}
-- Very bottom: small "FÚTBOL CARD AI" text
-
-After the card image, return ONLY this JSON (no markdown, no text):
-{"overall":88,"stat1":85,"label1":"${labels[0]}","stat2":82,"label2":"${labels[1]}","stat3":79,"label3":"${labels[2]}","stat4":91,"label4":"${labels[3]}","stat5":76,"label5":"${labels[4]}","stat6":84,"label6":"${labels[5]}","playerName":"THE EXECUTIVE"}
-
-Stats rules (values 72–99):
-- Role: ${role} | Skill: ${skill} | Style: ${leadershipStyle}
-- overall: 82–95 for a C-Suite executive
-- Boost stats linked to "${skill}" and "${leadershipStyle}"
-- playerName: short uppercase title matching their appearance (e.g. "THE VISIONARY", "THE ARCHITECT")`;
-}
-
 function buildDefaultStats(role: Role, labels: string[]): CardStats {
   return {
     overall: 87,
-    stat1: 89, label1: labels[0],
-    stat2: 86, label2: labels[1],
-    stat3: 83, label3: labels[2],
-    stat4: 91, label4: labels[3],
-    stat5: 77, label5: labels[4],
-    stat6: 88, label6: labels[5],
+    stat1: 89, label1: labels[0], stat2: 86, label2: labels[1],
+    stat3: 83, label3: labels[2], stat4: 91, label4: labels[3],
+    stat5: 77, label5: labels[4], stat6: 88, label6: labels[5],
   };
 }
 
@@ -100,33 +59,17 @@ function parseStats(text: string, role: Role, labels: string[]): { stats: CardSt
       playerName: String(raw.playerName || 'THE EXECUTIVE').toUpperCase(),
     };
   } catch {
-    console.warn('Failed to parse stats JSON, using defaults');
     return { stats: buildDefaultStats(role, labels), playerName: 'THE EXECUTIVE' };
   }
 }
 
-// OpenAI response types
-interface OAIContentPart {
-  type: string;
-  text?: string;
-  image_url?: { url: string };
-  // GPT-5.5 may return image data inline
-  image_data?: { data: string; media_type: string };
-}
-
 interface OAIResponse {
-  choices?: Array<{
-    message?: {
-      content?: string | OAIContentPart[];
-    };
-  }>;
-  error?: { message: string; type: string };
+  choices?: Array<{ message?: { content?: string } }>;
+  error?: { message: string };
 }
 
-async function callGPT(token: string, body: object): Promise<OAIResponse> {
+async function callGPT(token: string, messages: object[]): Promise<string> {
   const url = `${AI_API_URL}/v2/inference/deployments/${DEPLOYMENT_ID}/v1/chat/completions`;
-  console.log(`Calling GPT-5.5 at: ${url}`);
-
   const res = await fetch(url, {
     method: 'POST',
     headers: {
@@ -134,108 +77,75 @@ async function callGPT(token: string, body: object): Promise<OAIResponse> {
       'AI-Resource-Group': RESOURCE_GROUP,
       'Content-Type': 'application/json',
     },
-    body: JSON.stringify(body),
+    body: JSON.stringify({ model: 'gpt-5.5', messages }),
   });
-
   const text = await res.text();
-  console.log(`GPT response status: ${res.status}, body snippet: ${text.substring(0, 300)}`);
-
   if (!res.ok) throw new Error(`GPT AI Core error ${res.status}: ${text}`);
-
-  return JSON.parse(text) as OAIResponse;
-}
-
-function extractImageFromResponse(content: string | OAIContentPart[] | undefined): { imageBase64: string; mimeType: string } | null {
-  if (!content) return null;
-
-  // Array of parts (multimodal response)
-  if (Array.isArray(content)) {
-    for (const part of content) {
-      // Standard image_url with data URI
-      if (part.type === 'image_url' && part.image_url?.url) {
-        const url = part.image_url.url;
-        if (url.startsWith('data:')) {
-          const [header, data] = url.split(',');
-          const mimeType = header.match(/:(.*?);/)?.[1] ?? 'image/png';
-          return { imageBase64: data, mimeType };
-        }
-      }
-      // GPT-5.5 inline image_data style
-      if (part.type === 'image_data' && part.image_data?.data) {
-        return { imageBase64: part.image_data.data, mimeType: part.image_data.media_type ?? 'image/png' };
-      }
-    }
-  }
-
-  // String content — look for embedded base64 data URI
-  if (typeof content === 'string') {
-    const dataUriMatch = content.match(/data:(image\/[a-z]+);base64,([A-Za-z0-9+/=]+)/);
-    if (dataUriMatch) {
-      return { imageBase64: dataUriMatch[2], mimeType: dataUriMatch[1] };
-    }
-  }
-
-  return null;
-}
-
-function extractText(content: string | OAIContentPart[] | undefined): string {
-  if (!content) return '';
-  if (typeof content === 'string') return content;
-  return content.filter(p => p.type === 'text' && p.text).map(p => p.text!).join('\n');
+  const data = JSON.parse(text) as OAIResponse;
+  return data.choices?.[0]?.message?.content ?? '';
 }
 
 export async function generateCard(req: GenerateRequestBody): Promise<GenerateResponse> {
   const token = await getAccessToken();
   const labels = STAT_LABELS[req.role];
-  const prompt = buildPrompt(req.role, req.skill, req.leadershipStyle, labels);
+  const dataUri = `data:${req.mimeType};base64,${req.imageBase64}`;
 
-  const body = {
-    model: 'gpt-5.5',
-    messages: [
-      {
-        role: 'user',
-        content: [
-          {
-            type: 'image_url',
-            image_url: { url: `data:${req.mimeType};base64,${req.imageBase64}`, detail: 'high' },
-          },
-          {
-            type: 'text',
-            text: prompt,
-          },
-        ],
-      },
-    ],
-  };
+  // ── Call 1: generate stats (text/vision) ─────────────────────────────────
+  const statsPrompt = `Analyze this executive's photo and generate their FIFA Ultimate Team card stats.
+Role: ${req.role} | Skill: ${req.skill} | Style: ${req.leadershipStyle}
 
-  const gptRes = await callGPT(token, body);
-  const messageContent = gptRes.choices?.[0]?.message?.content;
+Return ONLY valid JSON, nothing else:
+{"overall":88,"stat1":85,"label1":"${labels[0]}","stat2":82,"label2":"${labels[1]}","stat3":79,"label3":"${labels[2]}","stat4":91,"label4":"${labels[3]}","stat5":76,"label5":"${labels[4]}","stat6":84,"label6":"${labels[5]}","playerName":"THE VISIONARY"}
 
-  const imageResult = extractImageFromResponse(messageContent);
-  const textContent  = extractText(messageContent);
+Rules: overall 82-95, each stat 72-99, boost stats linked to "${req.skill}" and "${req.leadershipStyle}", playerName uppercase 2-word title matching their look.`;
 
-  console.log('Text content snippet:', textContent.substring(0, 300));
+  const statsText = await callGPT(token, [
+    { role: 'user', content: [
+      { type: 'image_url', image_url: { url: dataUri, detail: 'low' } },
+      { type: 'text', text: statsPrompt },
+    ]},
+  ]);
+  console.log('Stats response:', statsText.substring(0, 200));
+  const { stats, playerName } = parseStats(statsText, req.role, labels);
 
-  const { stats, playerName } = parseStats(textContent, req.role, labels);
+  // ── Call 2: generate the card image ──────────────────────────────────────
+  const imagePrompt = `You are a digital artist. Transform this photo into a FIFA Ultimate Team gold collectible card image.
 
-  if (imageResult) {
-    console.log('GPT returned image:', imageResult.mimeType);
-    return {
-      imageBase64: imageResult.imageBase64,
-      mimeType: imageResult.mimeType,
-      stats,
-      playerName,
-      fallback: false,
-    };
+Requirements:
+- Remove the original background completely, keep only the person
+- Gold metallic card background: gradient from #8B6914 → #FFD700 → #FFF2AA → #FFD700 → #8B6914
+- Subtle diagonal texture lines on the gold background
+- Diagonal shimmer highlight (white semi-transparent stripe)
+- Person centered on card with vignette fade at bottom, blending into the gold
+- Top-left: large bold number "${stats.overall}" and text "${req.role}" below it
+- Top-right: "★ ★ ★" and small badge "AI ELITE"
+- Dark semi-transparent name banner below person: "${playerName}"
+- Bottom 6 stats in 2 columns: ${labels.map((l, i) => `${[stats.stat1,stats.stat2,stats.stat3,stats.stat4,stats.stat5,stats.stat6][i]} ${l}`).join(', ')}
+- Bottom footer: "FÚTBOL CARD AI"
+
+Return ONLY the card image as a base64-encoded PNG data URI in this exact format:
+data:image/png;base64,<base64data>
+
+Do not include any text, explanation or JSON. Only the data URI.`;
+
+  const imageText = await callGPT(token, [
+    { role: 'user', content: [
+      { type: 'image_url', image_url: { url: dataUri, detail: 'high' } },
+      { type: 'text', text: imagePrompt },
+    ]},
+  ]);
+  console.log('Image response snippet:', imageText.substring(0, 100));
+
+  // Extract data URI from response
+  const dataUriMatch = imageText.match(/data:(image\/[a-z+]+);base64,([A-Za-z0-9+/=\s]+)/);
+  if (dataUriMatch) {
+    const mimeType = dataUriMatch[1];
+    const imageBase64 = dataUriMatch[2].replace(/\s/g, '');
+    console.log('Extracted image, mimeType:', mimeType, 'length:', imageBase64.length);
+    return { imageBase64, mimeType, stats, playerName, fallback: false };
   }
 
-  // No image returned — use original photo with AI-generated stats
-  console.warn('GPT did not return an image, using original photo with AI stats');
-  return {
-    imageBase64: req.imageBase64,
-    mimeType: req.mimeType,
-    stats,
-    playerName,
-    fallback: false,
-  };
+  // Model returned text instead of image — use original photo
+  console.warn('GPT did not return an image data URI, using original photo');
+  return { imageBase64: req.imageBase64, mimeType: req.mimeType, stats, playerName, fallback: false };
 }
