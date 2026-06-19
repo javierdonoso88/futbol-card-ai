@@ -52,27 +52,82 @@ export default function PlayerCard({ result, role, uploadPreview }: Props) {
   const cardRef = useRef<HTMLDivElement>(null);
   const [downloading, setDownloading] = useState(false);
 
+  // If AI generated the full card image, show it directly
+  const isAIGeneratedCard = imageBase64 && imageBase64 !== result.stats.toString();
+
   const handleDownload = async () => {
-    if (!cardRef.current) return;
     setDownloading(true);
     try {
-      const canvas = await html2canvas(cardRef.current, {
-        useCORS: true,
-        allowTaint: true,
-        scale: 3,
-        backgroundColor: null,
-        logging: false,
-      });
-      const a = document.createElement('a');
-      a.href = canvas.toDataURL('image/png');
-      a.download = `cromo-${role.toLowerCase()}-${playerName.toLowerCase().replace(/\s+/g, '-')}.png`;
-      document.body.appendChild(a);
-      a.click();
-      document.body.removeChild(a);
+      if (isAIGeneratedCard) {
+        // Download the AI image directly — no need for html2canvas
+        const a = document.createElement('a');
+        a.href = photoSrc;
+        a.download = `cromo-${role.toLowerCase()}-${playerName.toLowerCase().replace(/\s+/g, '-')}.png`;
+        document.body.appendChild(a);
+        a.click();
+        document.body.removeChild(a);
+      } else if (cardRef.current) {
+        const canvas = await html2canvas(cardRef.current, {
+          useCORS: true, allowTaint: true, scale: 3, backgroundColor: null, logging: false,
+        });
+        const a = document.createElement('a');
+        a.href = canvas.toDataURL('image/png');
+        a.download = `cromo-${role.toLowerCase()}-${playerName.toLowerCase().replace(/\s+/g, '-')}.png`;
+        document.body.appendChild(a);
+        a.click();
+        document.body.removeChild(a);
+      }
     } finally {
       setDownloading(false);
     }
   };
+
+  // ── AI-generated full card: just show the image ──────────────────────────
+  if (isAIGeneratedCard) {
+    return (
+      <div className="flex flex-col items-center gap-6">
+        <motion.div
+          initial={{ scale: 0.8, opacity: 0, y: 20 }}
+          animate={{ scale: 1, opacity: 1, y: 0 }}
+          transition={{ type: 'spring', stiffness: 180, damping: 20 }}
+        >
+          <img
+            src={photoSrc}
+            alt={`Cromo ${role} — ${playerName}`}
+            style={{
+              maxWidth: 360,
+              width: '100%',
+              borderRadius: 16,
+              boxShadow: '0 20px 60px rgba(0,0,0,0.3)',
+              display: 'block',
+            }}
+          />
+        </motion.div>
+
+        <motion.button
+          initial={{ opacity: 0, y: 10 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ delay: 0.4 }}
+          onClick={handleDownload}
+          disabled={downloading}
+          className="flex items-center gap-2 px-6 py-3 rounded-lg font-semibold text-sm transition-all duration-200
+                     bg-[#004481] text-white hover:bg-[#003366] shadow-md hover:shadow-lg
+                     disabled:opacity-50 disabled:cursor-not-allowed"
+        >
+          {downloading ? (
+            <div className="w-4 h-4 border-2 border-white/40 border-t-white rounded-full animate-spin" />
+          ) : (
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+              <path d="M21 15v4a2 2 0 01-2 2H5a2 2 0 01-2-2v-4"/>
+              <polyline points="7 10 12 15 17 10"/>
+              <line x1="12" y1="15" x2="12" y2="3"/>
+            </svg>
+          )}
+          {downloading ? 'Descargando...' : 'Descargar Cromo'}
+        </motion.button>
+      </div>
+    );
+  }
 
   return (
     <div className="flex flex-col items-center gap-6">
