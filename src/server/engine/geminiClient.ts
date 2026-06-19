@@ -141,9 +141,6 @@ export async function generateCard(req: GenerateRequestBody): Promise<GenerateRe
     }],
     generationConfig: {
       responseModalities: ['IMAGE', 'TEXT'],
-      imageGenerationConfig: {
-        aspectRatio: '3:4',
-      },
     },
   };
 
