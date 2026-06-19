@@ -1,0 +1,11 @@
+applications:
+- name: futbol-card-ai
+  memory: 128M
+  disk_quota: 512M
+  buildpacks:
+    - nodejs_buildpack
+  command: node dist/server/index.js
+  env:
+    NODE_ENV: production
+    NPM_CONFIG_PRODUCTION: false
+    AI_CORE_DEPLOYMENT_ID: d8ba8af0c855151a
