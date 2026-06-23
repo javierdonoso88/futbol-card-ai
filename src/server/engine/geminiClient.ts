@@ -46,8 +46,9 @@ function buildDefaultStats(role: Role): { stats: CardStats; playerName: string }
   };
 }
 
-function buildPrompt(req: GenerateRequestBody): string {
-  return `FIFA World Cup 2026 Panini collectible sticker card portrait, vertical format. Person wearing red Spain national football team jersey with yellow gold details. Teal aqua background color. Large red bold digit 2 on the left side of background. Large yellow bold digit 6 on the right side of background. FIFA World Cup trophy icon in white top right corner. Circular Spain flag badge on right side. Letters ESP vertical on right edge. Orange rounded rectangles at bottom section for name and info. White footer bar with SAP and BBVA brand logos. Person centered and prominent, face clearly visible, smiling expression, beard. Clean digital design, sharp edges, no blur.`;
+function buildPrompt(_req: GenerateRequestBody): string {
+  // Titan text limit: 512 chars max
+  return 'FIFA World Cup 2026 Panini sticker card portrait. Person wearing red Spain football jersey. Teal aqua background. Large red number 2 left side, large yellow number 6 right side, both behind person. White FIFA trophy top right. Spain flag badge right side. ESP vertical letters right edge. Orange rounded banners bottom. White footer SAP BBVA logos. Person centered prominent face visible. Clean digital design.';
 }
 
 // Overlay readable text on top of Titan image using sharp SVG compositing
