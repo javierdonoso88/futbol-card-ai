@@ -6,7 +6,7 @@ const CLIENT_SECRET  = process.env.AICORE_CLIENT_SECRET  ?? '';
 const TOKEN_URL      = process.env.AICORE_TOKEN_URL      ?? '';
 const AI_API_URL     = process.env.AICORE_API_URL        ?? 'https://api.ai.prod.eu-central-1.aws.ml.hana.ondemand.com';
 const RESOURCE_GROUP = process.env.AICORE_RESOURCE_GROUP ?? 'default';
-const DEPLOYMENT_ID  = process.env.AICORE_DEPLOYMENT_ID  ?? 'd8f5acc2ce8a047a';
+const DEPLOYMENT_ID  = process.env.AICORE_DEPLOYMENT_ID  ?? 'de802b9a73842b77';
 
 interface TokenCache { token: string; expiresAt: number; }
 let tokenCache: TokenCache | null = null;
@@ -46,79 +46,48 @@ function buildDefaultStats(role: Role): { stats: CardStats; playerName: string }
   };
 }
 
-function buildPrompt(_req: GenerateRequestBody): string {
-  // Titan text limit: 512 chars max
-  return 'FIFA World Cup 2026 Panini sticker card portrait. Person wearing red Spain football jersey. Teal aqua background. Large red number 2 left side, large yellow number 6 right side, both behind person. White FIFA trophy top right. Spain flag badge right side. ESP vertical letters right edge. Orange rounded banners bottom. White footer SAP BBVA logos. Person centered prominent face visible. Clean digital design.';
+function buildPrompt(req: GenerateRequestBody): string {
+  const msg1 = `${req.role} — ${req.skill}`;
+  const msg2 = `Estilo: ${req.leadershipStyle}`;
+  const msg3 = `SAP AI Core · Executive Card`;
+
+  return `TASK: Take the person from the photo and create a FIFA World Cup 2026 Panini collectible sticker card.
+
+The card design:
+- Background: solid teal #29B8B0
+- Large red "2" on left side (behind person), large yellow "6" on right side (behind person)
+- Person in center foreground, background removed, wearing red Spain football jersey
+- Top-right: white FIFA trophy + "FIFA" text
+- Right side: Spain flag circular badge, ESP text vertically
+- Bottom: orange pill with "${req.playerName.toUpperCase()}", 3 smaller orange pills: "${msg1}", "${msg2}", "${msg3}"
+- Footer: white bar with SAP blue | BBVA dark blue
+
+Make the person large and prominent. The card must be taller than wide.`;
 }
 
-// Overlay readable text on top of Titan image using sharp SVG compositing
-async function overlayText(base64: string, playerName: string, msg1: string, msg2: string, msg3: string): Promise<string> {
+// Gemini always outputs landscape 1248×832 — crop the center 3:4 portion to get portrait.
+async function cropToPortrait(base64: string): Promise<{ base64: string; mimeType: string }> {
   const buf = Buffer.from(base64, 'base64');
   const meta = await sharp(buf).metadata();
-  const W = meta.width ?? 768;
-  const H = meta.height ?? 1152;
-
-  const pillW   = Math.round(W * 0.86);
-  const pillX   = Math.round((W - pillW) / 2);
-  const coverH  = Math.round(H * 0.32); // cover bottom 32% with teal to erase Titan's text
-  const coverY  = Math.round(H * 0.68);
-
-  const pillH   = 58;
-  const nameY   = coverY + 14;
-  const p2Y     = nameY + pillH + 8;
-  const p3Y     = p2Y + 42 + 6;
-  const p4Y     = p3Y + 42 + 6;
-  const footerY = p4Y + 42 + 12;
-
-  const svg = `<svg width="${W}" height="${H}" xmlns="http://www.w3.org/2000/svg">
-    <!-- Cover bottom section with teal to erase Titan's garbled text -->
-    <rect x="0" y="${coverY}" width="${W}" height="${coverH}" fill="#29B8B0" rx="0"/>
-    <!-- Name pill (large) -->
-    <rect x="${pillX}" y="${nameY}" width="${pillW}" height="${pillH}" rx="29" fill="#E8441A"/>
-    <text x="${W / 2}" y="${nameY + 40}" font-family="Arial Black,sans-serif" font-weight="900" font-size="30" fill="white" text-anchor="middle">${playerName.toUpperCase()}</text>
-    <!-- Msg 1 -->
-    <rect x="${pillX}" y="${p2Y}" width="${pillW}" height="40" rx="20" fill="#E8441A"/>
-    <text x="${W / 2}" y="${p2Y + 27}" font-family="Arial,sans-serif" font-weight="700" font-size="18" fill="white" text-anchor="middle">${msg1}</text>
-    <!-- Msg 2 -->
-    <rect x="${pillX}" y="${p3Y}" width="${pillW}" height="40" rx="20" fill="#E8441A"/>
-    <text x="${W / 2}" y="${p3Y + 27}" font-family="Arial,sans-serif" font-weight="700" font-size="18" fill="white" text-anchor="middle">${msg2}</text>
-    <!-- Msg 3 -->
-    <rect x="${pillX}" y="${p4Y}" width="${pillW}" height="40" rx="20" fill="#E8441A"/>
-    <text x="${W / 2}" y="${p4Y + 27}" font-family="Arial,sans-serif" font-weight="700" font-size="18" fill="white" text-anchor="middle">${msg3}</text>
-    <!-- SAP | BBVA footer -->
-    <rect x="${pillX}" y="${footerY}" width="${pillW}" height="44" rx="22" fill="white"/>
-    <text x="${W * 0.36}" y="${footerY + 29}" font-family="Arial Black,sans-serif" font-weight="900" font-size="22" fill="#008FD3" text-anchor="middle">SAP</text>
-    <line x1="${W * 0.5}" y1="${footerY + 8}" x2="${W * 0.5}" y2="${footerY + 36}" stroke="#CCCCCC" stroke-width="2"/>
-    <text x="${W * 0.64}" y="${footerY + 29}" font-family="Arial Black,sans-serif" font-weight="900" font-size="22" fill="#004481" text-anchor="middle">BBVA</text>
-  </svg>`;
-
-  const result = await sharp(buf)
-    .composite([{ input: Buffer.from(svg), top: 0, left: 0 }])
-    .png()
-    .toBuffer();
-
-  return result.toString('base64');
+  const w = meta.width ?? 1248;
+  const h = meta.height ?? 832;
+  if (h >= w) return { base64, mimeType: 'image/png' };
+  const newW = Math.round(h * 3 / 4);
+  const left = Math.round((w - newW) / 2);
+  const cropped = await sharp(buf).extract({ left, top: 0, width: newW, height: h }).png().toBuffer();
+  return { base64: cropped.toString('base64'), mimeType: 'image/png' };
 }
 
-// Prepare input image for Titan: convert to JPEG square 512×512
-async function prepareInputImage(base64: string, mimeType: string): Promise<string> {
-  const inputBuf = Buffer.from(base64, 'base64');
-  const jpegBuf = await sharp(inputBuf)
-    .resize(512, 512, { fit: 'cover', position: 'top' })
-    .jpeg({ quality: 90 })
-    .toBuffer();
-  return jpegBuf.toString('base64');
+interface GeminiPart {
+  text?: string;
+  inlineData?: { mimeType: string; data: string };
+}
+interface GeminiResponse {
+  candidates?: Array<{ content?: { parts?: GeminiPart[] } }>;
 }
 
-interface TitanResponse {
-  images?: string[];
-  error?: string;
-  message?: string;
-}
-
-async function callTitan(token: string, body: object): Promise<TitanResponse> {
-  const url = `${AI_API_URL}/v2/inference/deployments/${DEPLOYMENT_ID}/invoke`;
-  console.log('Calling Titan at:', url);
+async function callGemini(token: string, body: object): Promise<GeminiResponse> {
+  const url = `${AI_API_URL}/v2/inference/deployments/${DEPLOYMENT_ID}/models/gemini-2.5-flash-image:generateContent`;
   const res = await fetch(url, {
     method: 'POST',
     headers: {
@@ -129,53 +98,52 @@ async function callTitan(token: string, body: object): Promise<TitanResponse> {
     body: JSON.stringify(body),
   });
   const text = await res.text();
-  if (!res.ok) throw new Error(`Titan AI Core error ${res.status}: ${text}`);
-  console.log('Titan status:', res.status, '| snippet:', text.substring(0, 80));
-  return JSON.parse(text) as TitanResponse;
+  if (!res.ok) throw new Error(`Gemini AI Core error ${res.status}: ${text}`);
+  console.log(`Gemini status: ${res.status}, snippet: ${text.substring(0, 80)}`);
+  return JSON.parse(text) as GeminiResponse;
 }
 
 export async function generateCard(req: GenerateRequestBody): Promise<GenerateResponse> {
   const token = await getAccessToken();
   const prompt = buildPrompt(req);
 
-  // Prepare square input image for Titan
-  const inputBase64 = await prepareInputImage(req.imageBase64, req.mimeType);
-
   const body = {
-    taskType: 'IMAGE_VARIATION',
-    imageVariationParams: {
-      text: prompt,
-      negativeText: 'blurry, bad quality, distorted face, text errors, duplicate, watermark, landscape orientation',
-      images: [inputBase64],
-      similarityStrength: 0.7,
-    },
-    imageGenerationConfig: {
-      numberOfImages: 1,
-      width: 768,
-      height: 1152,
-      cfgScale: 8.0,
+    contents: [{
+      role: 'user',
+      parts: [
+        { inlineData: { mimeType: req.mimeType, data: req.imageBase64 } },
+        { text: prompt },
+      ],
+    }],
+    generationConfig: {
+      responseModalities: ['IMAGE', 'TEXT'],
     },
   };
 
-  const titanRes = await callTitan(token, body);
-
-  if (!titanRes.images?.[0]) {
-    console.warn('Titan returned no image, using original photo');
-    const { stats, playerName } = buildDefaultStats(req.role);
-    return { imageBase64: req.imageBase64, mimeType: req.mimeType, stats, playerName: req.playerName, fallback: false };
-  }
-
-  // Overlay correct text (Titan's text generation is unreliable)
-  const msg1 = `${req.role} — ${req.skill}`;
-  const msg2 = `Estilo: ${req.leadershipStyle}`;
-  const msg3 = `SAP AI Core · Executive Card`;
-  const finalBase64 = await overlayText(titanRes.images[0], req.playerName, msg1, msg2, msg3);
+  const geminiRes = await callGemini(token, body);
+  const parts = geminiRes.candidates?.[0]?.content?.parts ?? [];
+  const imagePart = parts.find(p => p.inlineData?.mimeType?.startsWith('image/'));
+  const textContent = parts.filter(p => p.text).map(p => p.text!).join('\n');
+  console.log('Text snippet:', textContent.substring(0, 150));
+  console.log('Image found:', !!imagePart, imagePart?.inlineData?.mimeType);
 
   const { stats } = buildDefaultStats(req.role);
-  console.log('Card generated successfully with Titan + SVG overlay');
+
+  if (imagePart?.inlineData) {
+    const portrait = await cropToPortrait(imagePart.inlineData.data);
+    return {
+      imageBase64: portrait.base64,
+      mimeType: portrait.mimeType,
+      stats,
+      playerName: req.playerName,
+      fallback: false,
+    };
+  }
+
+  console.warn('No image returned, using original photo');
   return {
-    imageBase64: finalBase64,
-    mimeType: 'image/png',
+    imageBase64: req.imageBase64,
+    mimeType: req.mimeType,
     stats,
     playerName: req.playerName,
     fallback: false,
