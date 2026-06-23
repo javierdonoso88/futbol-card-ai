@@ -8,4 +8,4 @@ applications:
   env:
     NODE_ENV: production
     NPM_CONFIG_PRODUCTION: false
-    AI_CORE_DEPLOYMENT_ID: de802b9a73842b77
+    AI_CORE_DEPLOYMENT_ID: d8f5acc2ce8a047a

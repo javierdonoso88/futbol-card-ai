@@ -6,7 +6,7 @@ const CLIENT_SECRET  = process.env.AICORE_CLIENT_SECRET  ?? '';
 const TOKEN_URL      = process.env.AICORE_TOKEN_URL      ?? '';
 const AI_API_URL     = process.env.AICORE_API_URL        ?? 'https://api.ai.prod.eu-central-1.aws.ml.hana.ondemand.com';
 const RESOURCE_GROUP = process.env.AICORE_RESOURCE_GROUP ?? 'default';
-const DEPLOYMENT_ID  = process.env.AICORE_DEPLOYMENT_ID  ?? 'de802b9a73842b77';
+const DEPLOYMENT_ID  = process.env.AICORE_DEPLOYMENT_ID  ?? 'd8f5acc2ce8a047a';
 
 interface TokenCache { token: string; expiresAt: number; }
 let tokenCache: TokenCache | null = null;
@@ -26,96 +26,98 @@ async function getAccessToken(): Promise<string> {
   return tokenCache.token;
 }
 
-const ROLE_COLORS: Record<Role, { bg: string; accent: string; text: string }> = {
-  CEO: { bg: '#2EC4B6', accent: '#E63946',  text: 'CEO' },
-  CFO: { bg: '#2EC4B6', accent: '#1D3557',  text: 'CFO' },
-  CTO: { bg: '#2EC4B6', accent: '#F4A261',  text: 'CTO' },
-  COO: { bg: '#2EC4B6', accent: '#6A0572',  text: 'COO' },
+const STAT_LABELS: Record<Role, string[]> = {
+  CFO: ['VISION', 'STRATEGY', 'ANALYTICS', 'LEADERSHIP', 'NETWORKS', 'EXECUTION'],
+  CTO: ['VISION', 'CODING', 'SECURITY', 'INNOVATION', 'LEADERSHIP', 'AGILITY'],
+  COO: ['PROCESS', 'SUPPLY', 'TEAMS', 'KPIs', 'COACHING', 'EXECUTION'],
+  CEO: ['VISION', 'STRATEGY', 'CULTURE', 'P&L', 'MARKET', 'LEADERSHIP'],
 };
 
-function buildPrompt(req: GenerateRequestBody): string {
-  const msg1 = `${req.role} — ${req.skill}`;
-  const msg2 = `Estilo: ${req.leadershipStyle}`;
-  const msg3 = `SAP AI Core · Executive Card`;
-
-  return `TASK: Take the person from Image 1 (the photo) and place them onto a collectible sticker card.
-
-The final result must be a VERTICAL portrait image (600×800px, taller than wide, 3:4 ratio).
-
-STEP 1 — Extract the person from Image 1:
-- Cut out the person with a clean, precise background removal
-- Keep: face, hair, beard, shoulders, upper chest
-- Remove: everything that is not the person (background, furniture, walls, etc.)
-- Dress the person in a red Spain football jersey (red shirt, yellow/gold details, blue navy accents)
-
-STEP 2 — Build the card background (paint this from scratch):
-- Full card background: solid teal color #29B8B0, rounded corners 16px
-- Large "2" digit: solid RED (#CC0000), font-size ~580px bold, positioned left side, partially cropped. Behind the person.
-- Large "6" digit: solid YELLOW (#F5C200), font-size ~580px bold, positioned right side, partially cropped. Behind the person.
-- Top-right corner: white FIFA World Cup trophy silhouette with "FIFA" text below in white
-- Right side (~55% height): circular Spain flag badge (red stripe, yellow stripe, red stripe)
-- Right edge: letters E, S, P stacked vertically in bold white
-
-STEP 3 — Composite person onto card:
-- Place the extracted person IN FRONT of the "26" background numbers
-- Center them horizontally
-- Position vertically: face starts near top (y≈50px), body extends to y≈590px
-- The person's face must be large, clear, prominent — taking up roughly 40% of the card height
-- Person is IN FRONT of everything in the background
-
-STEP 4 — Add bottom info section:
-- Orange pill (#E8441A), full-width, rounded: "${req.playerName.toUpperCase()}" in large bold white text
-- 3 smaller orange pills below:
-  1. "${msg1}"
-  2. "${msg2}"
-  3. "${msg3}"
-- White rounded rectangle at very bottom: "SAP" in blue | divider | "BBVA" in dark blue
-
-OUTPUT: Single vertical PNG image, 600 wide × 800 tall. Portrait. The person must be clearly visible in the upper portion of the card.`;
-}
-
 function buildDefaultStats(role: Role): { stats: CardStats; playerName: string } {
-  const labels: Record<Role, string[]> = {
-    CFO: ['VISION', 'STRATEGY', 'ANALYTICS', 'LEADERSHIP', 'NETWORKS', 'EXECUTION'],
-    CTO: ['VISION', 'CODING', 'SECURITY', 'INNOVATION', 'LEADERSHIP', 'AGILITY'],
-    COO: ['PROCESS', 'SUPPLY', 'TEAMS', 'KPIs', 'COACHING', 'EXECUTION'],
-    CEO: ['VISION', 'STRATEGY', 'CULTURE', 'P&L', 'MARKET', 'LEADERSHIP'],
-  };
-  const l = labels[role];
+  const labels = STAT_LABELS[role];
   return {
     stats: {
       overall: 87,
-      stat1: 89, label1: l[0], stat2: 86, label2: l[1],
-      stat3: 83, label3: l[2], stat4: 91, label4: l[3],
-      stat5: 77, label5: l[4], stat6: 88, label6: l[5],
+      stat1: 89, label1: labels[0], stat2: 86, label2: labels[1],
+      stat3: 83, label3: labels[2], stat4: 91, label4: labels[3],
+      stat5: 77, label5: labels[4], stat6: 88, label6: labels[5],
     },
     playerName: 'THE EXECUTIVE',
   };
 }
 
-interface GeminiPart {
-  text?: string;
-  inlineData?: { mimeType: string; data: string };
-}
-interface GeminiResponse {
-  candidates?: Array<{ content?: { parts?: GeminiPart[] } }>;
+function buildPrompt(req: GenerateRequestBody): string {
+  return `FIFA World Cup 2026 Panini collectible sticker card portrait, vertical format. Person wearing red Spain national football team jersey with yellow gold details. Teal aqua background color. Large red bold digit 2 on the left side of background. Large yellow bold digit 6 on the right side of background. FIFA World Cup trophy icon in white top right corner. Circular Spain flag badge on right side. Letters ESP vertical on right edge. Orange rounded rectangles at bottom section for name and info. White footer bar with SAP and BBVA brand logos. Person centered and prominent, face clearly visible, smiling expression, beard. Clean digital design, sharp edges, no blur.`;
 }
 
-// Gemini always outputs landscape. Crop the center 3:4 portion to get portrait.
-async function cropToPortrait(base64: string): Promise<{ base64: string; mimeType: string }> {
+// Overlay readable text on top of Titan image using sharp SVG compositing
+async function overlayText(base64: string, playerName: string, msg1: string, msg2: string, msg3: string): Promise<string> {
   const buf = Buffer.from(base64, 'base64');
   const meta = await sharp(buf).metadata();
-  const w = meta.width ?? 1248;
-  const h = meta.height ?? 832;
-  if (h >= w) return { base64, mimeType: 'image/png' }; // already portrait
-  const newW = Math.round(h * 3 / 4);
-  const left = Math.round((w - newW) / 2);
-  const cropped = await sharp(buf).extract({ left, top: 0, width: newW, height: h }).png().toBuffer();
-  return { base64: cropped.toString('base64'), mimeType: 'image/png' };
+  const W = meta.width ?? 768;
+  const H = meta.height ?? 1152;
+
+  const pillW   = Math.round(W * 0.86);
+  const pillX   = Math.round((W - pillW) / 2);
+  const coverH  = Math.round(H * 0.32); // cover bottom 32% with teal to erase Titan's text
+  const coverY  = Math.round(H * 0.68);
+
+  const pillH   = 58;
+  const nameY   = coverY + 14;
+  const p2Y     = nameY + pillH + 8;
+  const p3Y     = p2Y + 42 + 6;
+  const p4Y     = p3Y + 42 + 6;
+  const footerY = p4Y + 42 + 12;
+
+  const svg = `<svg width="${W}" height="${H}" xmlns="http://www.w3.org/2000/svg">
+    <!-- Cover bottom section with teal to erase Titan's garbled text -->
+    <rect x="0" y="${coverY}" width="${W}" height="${coverH}" fill="#29B8B0" rx="0"/>
+    <!-- Name pill (large) -->
+    <rect x="${pillX}" y="${nameY}" width="${pillW}" height="${pillH}" rx="29" fill="#E8441A"/>
+    <text x="${W / 2}" y="${nameY + 40}" font-family="Arial Black,sans-serif" font-weight="900" font-size="30" fill="white" text-anchor="middle">${playerName.toUpperCase()}</text>
+    <!-- Msg 1 -->
+    <rect x="${pillX}" y="${p2Y}" width="${pillW}" height="40" rx="20" fill="#E8441A"/>
+    <text x="${W / 2}" y="${p2Y + 27}" font-family="Arial,sans-serif" font-weight="700" font-size="18" fill="white" text-anchor="middle">${msg1}</text>
+    <!-- Msg 2 -->
+    <rect x="${pillX}" y="${p3Y}" width="${pillW}" height="40" rx="20" fill="#E8441A"/>
+    <text x="${W / 2}" y="${p3Y + 27}" font-family="Arial,sans-serif" font-weight="700" font-size="18" fill="white" text-anchor="middle">${msg2}</text>
+    <!-- Msg 3 -->
+    <rect x="${pillX}" y="${p4Y}" width="${pillW}" height="40" rx="20" fill="#E8441A"/>
+    <text x="${W / 2}" y="${p4Y + 27}" font-family="Arial,sans-serif" font-weight="700" font-size="18" fill="white" text-anchor="middle">${msg3}</text>
+    <!-- SAP | BBVA footer -->
+    <rect x="${pillX}" y="${footerY}" width="${pillW}" height="44" rx="22" fill="white"/>
+    <text x="${W * 0.36}" y="${footerY + 29}" font-family="Arial Black,sans-serif" font-weight="900" font-size="22" fill="#008FD3" text-anchor="middle">SAP</text>
+    <line x1="${W * 0.5}" y1="${footerY + 8}" x2="${W * 0.5}" y2="${footerY + 36}" stroke="#CCCCCC" stroke-width="2"/>
+    <text x="${W * 0.64}" y="${footerY + 29}" font-family="Arial Black,sans-serif" font-weight="900" font-size="22" fill="#004481" text-anchor="middle">BBVA</text>
+  </svg>`;
+
+  const result = await sharp(buf)
+    .composite([{ input: Buffer.from(svg), top: 0, left: 0 }])
+    .png()
+    .toBuffer();
+
+  return result.toString('base64');
 }
 
-async function callGemini(token: string, body: object): Promise<GeminiResponse> {
-  const url = `${AI_API_URL}/v2/inference/deployments/${DEPLOYMENT_ID}/models/gemini-2.5-flash-image:generateContent`;
+// Prepare input image for Titan: convert to JPEG square 512×512
+async function prepareInputImage(base64: string, mimeType: string): Promise<string> {
+  const inputBuf = Buffer.from(base64, 'base64');
+  const jpegBuf = await sharp(inputBuf)
+    .resize(512, 512, { fit: 'cover', position: 'top' })
+    .jpeg({ quality: 90 })
+    .toBuffer();
+  return jpegBuf.toString('base64');
+}
+
+interface TitanResponse {
+  images?: string[];
+  error?: string;
+  message?: string;
+}
+
+async function callTitan(token: string, body: object): Promise<TitanResponse> {
+  const url = `${AI_API_URL}/v2/inference/deployments/${DEPLOYMENT_ID}/invoke`;
+  console.log('Calling Titan at:', url);
   const res = await fetch(url, {
     method: 'POST',
     headers: {
@@ -126,57 +128,55 @@ async function callGemini(token: string, body: object): Promise<GeminiResponse> 
     body: JSON.stringify(body),
   });
   const text = await res.text();
-  if (!res.ok) throw new Error(`Gemini AI Core error ${res.status}: ${text}`);
-  console.log(`Gemini status: ${res.status}, snippet: ${text.substring(0, 120)}`);
-  return JSON.parse(text) as GeminiResponse;
+  if (!res.ok) throw new Error(`Titan AI Core error ${res.status}: ${text}`);
+  console.log('Titan status:', res.status, '| snippet:', text.substring(0, 80));
+  return JSON.parse(text) as TitanResponse;
 }
 
 export async function generateCard(req: GenerateRequestBody): Promise<GenerateResponse> {
   const token = await getAccessToken();
   const prompt = buildPrompt(req);
 
+  // Prepare square input image for Titan
+  const inputBase64 = await prepareInputImage(req.imageBase64, req.mimeType);
+
   const body = {
-    contents: [{
-      role: 'user',
-      parts: [
-        { inlineData: { mimeType: req.mimeType, data: req.imageBase64 } },
-        { text: prompt },
-      ],
-    }],
-    generationConfig: {
-      responseModalities: ['IMAGE', 'TEXT'],
+    taskType: 'IMAGE_VARIATION',
+    imageVariationParams: {
+      text: prompt,
+      negativeText: 'blurry, bad quality, distorted face, text errors, duplicate, watermark, landscape orientation',
+      images: [inputBase64],
+      similarityStrength: 0.7,
+    },
+    imageGenerationConfig: {
+      numberOfImages: 1,
+      width: 768,
+      height: 1152,
+      cfgScale: 8.0,
     },
   };
 
-  const geminiRes = await callGemini(token, body);
-  const parts = geminiRes.candidates?.[0]?.content?.parts ?? [];
+  const titanRes = await callTitan(token, body);
 
-  const imagePart = parts.find(p => p.inlineData?.mimeType?.startsWith('image/'));
-  const textContent = parts.filter(p => p.text).map(p => p.text!).join('\n');
-  console.log('Text snippet:', textContent.substring(0, 150));
-  console.log('Image found:', !!imagePart, imagePart?.inlineData?.mimeType);
-
-  const { stats, playerName } = buildDefaultStats(req.role);
-
-  if (imagePart?.inlineData) {
-    // Gemini always returns landscape 1248×832 — crop center to portrait 3:4
-    const cropped = await cropToPortrait(imagePart.inlineData.data);
-    console.log('Portrait crop applied:', cropped.mimeType);
-    return {
-      imageBase64: cropped.base64,
-      mimeType: cropped.mimeType,
-      stats,
-      playerName: req.playerName || playerName,
-      fallback: false,
-    };
+  if (!titanRes.images?.[0]) {
+    console.warn('Titan returned no image, using original photo');
+    const { stats, playerName } = buildDefaultStats(req.role);
+    return { imageBase64: req.imageBase64, mimeType: req.mimeType, stats, playerName: req.playerName, fallback: false };
   }
 
-  console.warn('No image returned, using original photo');
+  // Overlay correct text (Titan's text generation is unreliable)
+  const msg1 = `${req.role} — ${req.skill}`;
+  const msg2 = `Estilo: ${req.leadershipStyle}`;
+  const msg3 = `SAP AI Core · Executive Card`;
+  const finalBase64 = await overlayText(titanRes.images[0], req.playerName, msg1, msg2, msg3);
+
+  const { stats } = buildDefaultStats(req.role);
+  console.log('Card generated successfully with Titan + SVG overlay');
   return {
-    imageBase64: req.imageBase64,
-    mimeType: req.mimeType,
+    imageBase64: finalBase64,
+    mimeType: 'image/png',
     stats,
-    playerName: req.playerName || playerName,
+    playerName: req.playerName,
     fallback: false,
   };
 }
